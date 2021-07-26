@@ -80,13 +80,14 @@ namespace MAT {
 	class TThread {
 
 		NodeC nodeC;
+		size_c maxThreadsSize;//最大线程数量
 		size_c size;//节点数量
 		std::list<std::thread*> threads;
 		std::thread* forDelete;
 		std::mutex changeList;
 
 		void tryCreateThread();//尝试创建线程（线程不安全）
-		bool tryDeleteThread(std::thread* ptr);//尝试删除线程（线程不安全）
+		bool tryDeleteThread(std::list<std::thread*>::iterator it);//尝试删除线程（线程不安全）
 	public:
 		friend class TTNode;
 
@@ -95,8 +96,9 @@ namespace MAT {
 		void join();
 		void start();//开始线程池。
 		void stop();//
+		void setMaxThreadsSize();
 
-		void run(std::thread* ptr);
+		void run(std::list<std::thread*>::iterator it);
 
 	};
 

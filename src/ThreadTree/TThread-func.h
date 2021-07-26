@@ -1,7 +1,7 @@
 #pragma once
 
 namespace MAT {
-	void TThread::run(std::thread* ptr) {
+	void TThread::run(std::list<std::thread*>::iterator it) {
 		NodeC::pos ndp;
 		char signal;
 		while (true) {//Ö÷Ñ­»·
@@ -27,7 +27,7 @@ namespace MAT {
 						else {
 							nodeNow->fptr = nullptr;
 						}
-						if (tryDeleteThread(ptr)) {
+						if (tryDeleteThread(it)) {
 							changeList.unlock();
 							return;
 						}
@@ -41,5 +41,27 @@ namespace MAT {
 				}
 			}
 		}
+	}
+
+
+	inline void TThread::tryCreateThread() {
+		while (size > threads.size() and threads.size() < maxThreadsSize) {
+			threads.push_back(nullptr);
+			threads.back() = new std::thread(&TThread::run, this, --threads.end());
+		}
+	}
+
+
+	bool TThread::tryDeleteThread(std::list<std::thread*>::iterator it) {
+		if (size < threads.size()) {
+			if (forDelete != nullptr) {
+				while (forDelete->joinable());
+			}
+			delete forDelete;
+			forDelete = *it;
+			threads.erase(it);
+			return true;
+		}
+		return false;
 	}
 }
