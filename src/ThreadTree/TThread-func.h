@@ -11,18 +11,19 @@ namespace MAT {
 				changeList.lock();
 				ndp = nodeCNow->getNodeLower();//获取下一个节点的位置
 				if (ndp.ptr != nullptr) {//检验合法性
-					nodeNow = *ndp.it;
+					nodeNow = *ndp.it;//赋值
 					nodeCNow = &nodeNow->nodeC;
 					nodeNow->running = true;
 					changeList.unlock();
-					do {
+					do {//执行用户函数
 						signal = (nodeNow->*(nodeNow->fptr))();
 					} while (signal == TTHREAD_KEEP);
 					changeList.lock();
-					nodeNow->running = false;
+					nodeNow->running = false;//修改数值
 					if (signal == TTHREAD_STOP) {
 						if (nodeCNow->empty()) {
 							ndp.ptr->erase(ndp.it);
+							delete nodeNow;
 						}
 						else {
 							nodeNow->fptr = nullptr;
@@ -65,5 +66,6 @@ namespace MAT {
 		return false;
 	}
 
-	TThread::TThread(): maxThreadsSize(0), size(0) {}
+	inline TThread::TThread(): maxThreadsSize(0), size(0) {}
+	inline TThread::~TThread(){}
 }

@@ -6,7 +6,12 @@
 
 int main()
 {
-    std::cout << "Hello World!\n";
+	MAT::NodeC nodeC;
+	MAT::TThread tth;
+	MAT::TTNode tnode1(&tth);
+	MAT::TTNode tnode2(&tth);
+	MAT::TTNode tnode3(&tth);
+	
 }
 
 // 运行程序: Ctrl + F5 或调试 >“开始执行(不调试)”菜单

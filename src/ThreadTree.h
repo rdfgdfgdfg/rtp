@@ -19,6 +19,11 @@ namespace MAT {
 
 
 	class NodeC {
+		friend class TThread;
+	public:
+		struct pos;//用于存放getNodeLower返回值的表示位置的结构体
+		using iterator = std::list<TTNode*>::iterator;
+	private:
 		/*
 		push_back可添加；getNodeLower可访问，可调用erase删除；empty next可访问
 		存放由用户函数创建的线程节点。内部的节点指针将会被getNodeLower访问并迭代
@@ -45,9 +50,10 @@ namespace MAT {
 		建议先next，再访问activeIt
 		*/
 		void next();//activeIt移位
+
+		/*安全地删除list中的元素，不会使activeIt失效*/
+		void erase(iterator it);//线程不安全
 	public:
-		struct pos;//用于存放getNodeLower返回值的表示位置的结构体
-		using iterator = std::list<TTNode*>::iterator;
 
 		inline void push_back(TTNode* ptr) { list.push_back(ptr); }//线程不安全
 
@@ -65,11 +71,6 @@ namespace MAT {
 
 		bool empty();//线程不安全
 
-
-		/*安全地删除list中的元素，不会使activeIt失效*/
-		void erase(iterator it);//线程不安全
-
-
 		using iterator = std::list<TTNode*>::iterator;
 
 		struct pos {//储存getNodeLower的返回值
@@ -78,6 +79,11 @@ namespace MAT {
 		};
 	};
 
+	/*
+	delete情况：
+	fptr返回TTHREAD_STOP，且nodeC.empty()时
+	getNodeLower发现 fptr==nullptr且de_fptr==nullptr且nodeC.empty 时
+	*/
 	class TTNode {//此类线程安全
 	public:
 		using Fptr = char (TTNode::*)();//用户函数指针
@@ -92,7 +98,6 @@ namespace MAT {
 		//该线程节点是否正在被执行。初始化为false
 		bool running;
 
-		bool wait_for_erase;//是否需要被移除
 		NodeC nodeC;
 
 		friend class TThread;
@@ -101,7 +106,7 @@ namespace MAT {
 	public:
 		TTNode(TThread* belong);
 		TTNode(TTNode* wrap);
-		~TTNode();
+		virtual ~TTNode();
 
 
 		TTNode() = delete;
