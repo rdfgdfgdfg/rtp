@@ -19,21 +19,54 @@ namespace MAT {
 
 
 	class NodeC {
+		/*
+		push_back可添加；getNodeLower可访问，可调用erase删除；empty next可访问
+		存放由用户函数创建的线程节点。内部的节点指针将会被getNodeLower访问并迭代
+		刚初始化时，链表为空。
+		链表是否为空是getNodeLower判断是否移除（不析构）该节点指针的依据之一
+		*/
 		std::list<TTNode*> list;//若fptr创建了其他线程节点。它们将被加入到此迭代器中
+
+
+		/*
+		节点容器的迭代器
+		getNodeLower可访问；next erase可访问并修改
+		存放将要被getNodeLower迭代的线程节点
+		刚初始化时，迭代器为空
+		*/
 		std::list<TTNode*>::iterator activeIt;//节点容器的迭代器，指向下一个应被执行的线程节点。
 
+
+		/*
+		线程不安全
+		执行此函数需要确保list不为空
+		修改activeIt，读取list
+		该函数会移动activeIt，起到遍历list的作用
+		建议先next，再访问activeIt
+		*/
 		void next();//activeIt移位
 	public:
-		struct pos;
+		struct pos;//用于存放getNodeLower返回值的表示位置的结构体
 		using iterator = std::list<TTNode*>::iterator;
 
 		inline void push_back(TTNode* ptr) { list.push_back(ptr); }//线程不安全
 
-		//获得TTNode节点的指针
+		/*
+		线程不安全
+		执行此函数需要确保list不为空
+		访问activeIt，执行erase，empty
+		该函数会依次移位并访问activeIt：访问this->activeIt，然后是(*this->activeIt)->nodeC.activeIt
+		然后是(*(*this->activeIt)->nodeC.activeIt)->nodeC.activeIt以此类推（每次访问前都会next)
+		该函数会在得到可执行且!running的线程节点时终止，否则，它会一直运行到nodeC.empty()为止
+		如果发现不可执行且nodeC为空的节点，它会将它的fptr更改为de_fptr，若de_fptr为nullptr它会将其删除（析构）
+		反复执行该函数可以达到遍历的效果
+		*/
 		pos getNodeLower();//指向属于此节点容器的最近可执行节点（线程不安全）
 
 		bool empty();//线程不安全
 
+
+		/*安全地删除list中的元素，不会使activeIt失效*/
 		void erase(iterator it);//线程不安全
 
 
@@ -59,6 +92,7 @@ namespace MAT {
 		//该线程节点是否正在被执行。初始化为false
 		bool running;
 
+		bool wait_for_erase;//是否需要被移除
 		NodeC nodeC;
 
 		friend class TThread;
@@ -81,7 +115,7 @@ namespace MAT {
 
 		NodeC nodeC;
 		size_c maxThreadsSize;//最大线程数量
-		size_c size;//节点数量
+		size_c size;//可执行节点数量
 		std::list<std::thread*> threads;
 		std::thread* forDelete;
 		std::mutex changeList;

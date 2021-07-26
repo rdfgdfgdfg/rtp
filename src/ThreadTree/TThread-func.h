@@ -64,4 +64,6 @@ namespace MAT {
 		}
 		return false;
 	}
+
+	TThread::TThread(): maxThreadsSize(0), size(0) {}
 }
