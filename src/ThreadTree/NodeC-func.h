@@ -2,7 +2,6 @@
 
 namespace MAT {
 	inline void NodeC::next() {
-
 		if (activeIt == list.end()) {
 			activeIt = list.begin();
 		}
@@ -15,7 +14,18 @@ namespace MAT {
 		return list.empty();
 	}
 
+	inline void NodeC::push_back(TTNode* ptr) {
+		if (list.empty()) {
+			list.push_back(ptr);
+			activeIt = list.begin();
+		}
+		else {
+			list.push_back(ptr);
+		}
+	}
+
 	void NodeC::erase(iterator it) {
+		(*it)->belong->size--;
 		if (activeIt == it) {
 			if (activeIt == list.end()) {//删除的线程在线程链末尾
 				if (activeIt == list.begin()) {//线程池线程中只有待删除线程

@@ -17,6 +17,4 @@ namespace MAT {
 		belong->tryCreateThread();
 		belong->changeList.unlock();
 	};
-
-	inline TTNode::~TTNode() {}
 }

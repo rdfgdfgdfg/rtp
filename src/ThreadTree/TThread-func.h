@@ -4,35 +4,24 @@ namespace MAT {
 	void TThread::run(std::list<std::thread*>::iterator it) {
 		NodeC::pos ndp;
 		char signal;
-		while (true) {//Ö÷Ñ­»·
-			NodeC* nodeCNow = &nodeC;//½«ÒªÖ´ÐÐµÄ½ÚµãµÄ½ÚµãÈÝÆ÷µÄÖ¸Õë
-			TTNode* nodeNow = nullptr;//½«ÒªÖ´ÐÐµÄ½ÚµãµÄÖ¸Õë
-			while (true) {//µ¥Á´Ñ­»·
+		while (true) {//ä¸»å¾ªçŽ¯
+			NodeC* nodeCNow = &nodeC;//å°†è¦æ‰§è¡Œçš„èŠ‚ç‚¹çš„èŠ‚ç‚¹å®¹å™¨çš„æŒ‡é’ˆ
+			TTNode* nodeNow = nullptr;//å°†è¦æ‰§è¡Œçš„èŠ‚ç‚¹çš„æŒ‡é’ˆ
+			while (true) {//å•é“¾å¾ªçŽ¯
 				changeList.lock();
-				ndp = nodeCNow->getNodeLower();//»ñÈ¡ÏÂÒ»¸ö½ÚµãµÄÎ»ÖÃ
-				if (ndp.ptr != nullptr) {//¼ìÑéºÏ·¨ÐÔ
-					nodeNow = *ndp.it;//¸³Öµ
+				if (tryDeleteThread(it)) {
+					changeList.unlock();
+					return;
+				}
+				ndp = nodeCNow->getNodeLower();//èŽ·å–ä¸‹ä¸€ä¸ªèŠ‚ç‚¹çš„ä½ç½®
+				if (ndp.ptr != nullptr) {//æ£€éªŒåˆæ³•æ€§
+					nodeNow = *ndp.it;//èµ‹å€¼
 					nodeCNow = &nodeNow->nodeC;
 					nodeNow->running = true;
 					changeList.unlock();
-					do {//Ö´ÐÐÓÃ»§º¯Êý
-						signal = (nodeNow->*(nodeNow->fptr))();
-					} while (signal == TTHREAD_KEEP);
+					(nodeNow->*(nodeNow->fptr))();
 					changeList.lock();
-					nodeNow->running = false;//ÐÞ¸ÄÊýÖµ
-					if (signal == TTHREAD_STOP) {
-						if (nodeCNow->empty()) {
-							ndp.ptr->erase(ndp.it);
-							delete nodeNow;
-						}
-						else {
-							nodeNow->fptr = nullptr;
-						}
-						if (tryDeleteThread(it)) {
-							changeList.unlock();
-							return;
-						}
-					}
+					nodeNow->running = false;//ä¿®æ”¹æ•°å€¼
 					changeList.unlock();
 
 				}

@@ -55,7 +55,7 @@ namespace MAT {
 		void erase(iterator it);//线程不安全
 	public:
 
-		inline void push_back(TTNode* ptr) { list.push_back(ptr); }//线程不安全
+		void push_back(TTNode* ptr);//线程不安全
 
 		/*
 		线程不安全
@@ -77,6 +77,8 @@ namespace MAT {
 			NodeC* ptr;//it是ptr的迭代器。若getNodeLower执行失败，ptr是nullptr
 			NodeC::iterator it; //*it指向属于此节点容器的最近可执行节点.
 		};
+
+		NodeC() :activeIt(list.end()) {};
 	};
 
 	/*
@@ -86,7 +88,7 @@ namespace MAT {
 	*/
 	class TTNode {//此类线程安全
 	public:
-		using Fptr = char (TTNode::*)();//用户函数指针
+		using Fptr = void (TTNode::*)();//用户函数指针
 		friend class NodeC;
 	protected:
 		//初始化为nullptr，表示不要试图执行该线程节点。
@@ -106,7 +108,7 @@ namespace MAT {
 	public:
 		TTNode(TThread* belong);
 		TTNode(TTNode* wrap);
-		virtual ~TTNode();
+		virtual ~TTNode() {};
 
 
 		TTNode() = delete;
@@ -117,10 +119,10 @@ namespace MAT {
 
 
 	class TThread {
-
+	public://test
 		NodeC nodeC;
 		size_c maxThreadsSize;//最大线程数量
-		size_c size;//可执行节点数量
+		size_c size;//节点数量
 		std::list<std::thread*> threads;
 		std::thread* forDelete;
 		std::mutex changeList;
