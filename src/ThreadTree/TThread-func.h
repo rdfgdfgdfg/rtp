@@ -3,7 +3,6 @@
 namespace MAT {
 	void TThread::run(std::list<std::thread*>::iterator it) {
 		NodeC::pos ndp;
-		char signal;
 		while (true) {//主循环
 			NodeC* nodeCNow = &nodeC;//将要执行的节点的节点容器的指针
 			TTNode* nodeNow = nullptr;//将要执行的节点的指针

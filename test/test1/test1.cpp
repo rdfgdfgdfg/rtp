@@ -4,13 +4,36 @@
 #include <iostream>
 #include "../../src/ThreadTree.h"
 
+using namespace std;
+class A :public MAT::TTNode {
+public:
+
+
+	
+	A(MAT::TThread* belong, int a) :MAT::TTNode(belong) {
+		for (int i = 0; i < a; i++) {
+			new A(this, a - 1);
+		}
+		fptr = static_cast<Fptr>(&A::foo);
+	}
+	A(MAT::TTNode* wrap, int a) :MAT::TTNode(wrap) {
+		for (int i = 0; i < a; i++) {
+			new A(this, a - 1);
+		}
+		fptr = static_cast<Fptr>(&A::foo);
+	}
+	void foo() {
+		cout << "hello" << endl;
+	}
+};
+
 int main()
 {
-	MAT::NodeC nodeC;
 	MAT::TThread tth;
-	MAT::TTNode tnode1(&tth);
-	MAT::TTNode tnode2(&tth);
-	MAT::TTNode tnode3(&tth);
+	A tnode1(&tth, 3);
+	A tnode2(&tth, 3);
+
+	A tnode3(&tth, 3);
 	auto a = tth.nodeC.getNodeLower();
 }
 

@@ -64,30 +64,25 @@ namespace MAT {
 		TTNode* ptr = *rt.it;//要执行的节点的指针
 		bool fptrNull;
 		bool ptrRun;
+		bool nodeCEmpty;
 		while (true) {//循环
 			fptrNull = ptr->fptr == nullptr;
 			ptrRun = !ptr->running;
-			if (!fptrNull and ptrRun) {//若ptr满足条件，就返回
-				return rt;
-			}
-			else {//若ptr不满足条件
-				if (ptr->nodeC.empty()) {//并且ptr下没有其他节点（如图）
-		/*
+			nodeCEmpty = ptr->nodeC.empty();
+			if (nodeCEmpty and ptr->de_fptr != nullptr) {//若ptr下没有其他节点（如图），并且定义了回调函数
+					/*
 |
 _____________(rt.ptr指向容器,it是容器的迭代器)
 o ^ o ^ o ^ o(ptr是此层，指向节点的指针）
 		*/
-					if (fptrNull) {//若该ptr不可执行
-						if (ptr->de_fptr == nullptr) {//并且该ptr不存在回调函数
-							rt.ptr->erase(rt.it);//将该节点移除
-							delete ptr;//并删除
-						}
-						else {//但是该ptr存在回调函数
-							ptr->fptr = ptr->de_fptr;//将回调函数作为用户函数
-							ptr->de_fptr = nullptr;
-							return rt;//正常返回
-						}
-					}
+				ptr->fptr = ptr->de_fptr;//将回调函数作为用户函数
+				ptr->de_fptr = nullptr;
+			}
+			if (!fptrNull and ptrRun) {//若ptr满足条件，就返回
+				return rt;
+			}
+			else {//若ptr不满足条件
+				if (nodeCEmpty) {//并且ptr下没有其他节点
 					rt.ptr = nullptr;//报错
 					return rt;
 					//(为什么不在rt.ptr内继续查找？

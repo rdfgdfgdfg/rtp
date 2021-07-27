@@ -17,13 +17,37 @@ rtp库将被线程池管理的线程称为线程节点
 启动状态下所有属于该池的线程节点都会合理地自动启动，这时也可以向池添加线程节点。
 但是一般是由线程节点内部添加（线程节点内部操作时，对池的修改都会暂停）。
 因为从外部添加时，池还在运行。可能还没有添加完，池就运行完了  
-池在运行完后，状态为未启动
+池在运行完后，状态为未启动  
   
 ### 线程节点
-
+线程节点是对线程的抽象，逻辑上可以当作线程使用  
+线程节点有2个函数指针，分别为fptr和de_fptr，类型为Fptr,即void (TTNode::\*)() 即TTNode中声明的void \*();  
+还有一个存放线程节点的容器nodeC，执行该线程节点时创建的线程会被放入nodeC中  
+还有虚析构函数
+其中fptr会被执行，de_fptr会在线程节点的nodeC为空时，覆盖fptr并执行(前提是de_fptr不是nullptr)  
+若fptr为nullptr，此线程节点不会被执行  
   
-## 代码  
-要想创建递归线程池，需要使用以下代码  
-`MAT::TThread tth;  
-或  
-`MAT::TThread* tthp = new MAT::TThread;  
+由于fptr和de_fptr的类型为void (TTNode::\*)()，所以用户函数要在TTNode中声明————这显然是不可能的  
+我建议你派生TTNode类，在派生类中写代码，然后将函数指针赋给fptr
+  
+## 代码   
+```c++
+Class UserNode : public MAT::TTNode{//派生TTNode类
+	void foo(){......}//用户函数
+	UserNode(MAT::TThread* belong, ......user def) : MAT::TTNode(belong) {
+		fptr = static_cast<Fptr>(&UserNode::foo);//fptr是必须赋值的，否则该线程节点没什么意义
+		......//de_fptr是否赋值要根据实际情况
+	}
+	UserNode(MAT::TTNode* wrap, ......user def) : MAT::TTNode(wrap) {......}
+}
+
+int main(){
+	MAT::TThread tth;//创建递归线程池
+	UserNode a(&tth);//创建线程节点
+	UserNode b(&a);//&b在a的nodeC内
+	tth.start();
+	tth.join();
+}
+```
+
+
