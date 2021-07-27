@@ -10,17 +10,19 @@ public:
 
 
 	
-	A(MAT::TThread* belong, int a) :MAT::TTNode(belong) {
+	A(MAT::TThreadPool* belong, int a) :MAT::TTNode(belong) {
+		fptr = static_cast<Fptr>(&A::foo);
+		unlock();
 		for (int i = 0; i < a; i++) {
 			new A(this, a - 1);
 		}
-		fptr = static_cast<Fptr>(&A::foo);
 	}
 	A(MAT::TTNode* wrap, int a) :MAT::TTNode(wrap) {
+		fptr = static_cast<Fptr>(&A::foo);
+		unlock();
 		for (int i = 0; i < a; i++) {
 			new A(this, a - 1);
 		}
-		fptr = static_cast<Fptr>(&A::foo);
 	}
 	void foo() {
 		cout << "hello" << endl;
@@ -29,7 +31,7 @@ public:
 
 int main()
 {
-	MAT::TThread tth;
+	MAT::TThreadPool tth;
 	A tnode1(&tth, 3);
 	A tnode2(&tth, 3);
 

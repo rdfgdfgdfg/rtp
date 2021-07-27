@@ -1,7 +1,7 @@
 #pragma once
 
 namespace MAT {
-	void TThread::run(std::list<std::thread*>::iterator it) {
+	void TThreadPool::run(std::list<std::thread*>::iterator it) {
 		NodeC::pos ndp;
 		while (true) {//主循环
 			NodeC* nodeCNow = &nodeC;//将要执行的节点的节点容器的指针
@@ -18,9 +18,12 @@ namespace MAT {
 					nodeCNow = &nodeNow->nodeC;
 					nodeNow->running = true;
 					changeList.unlock();
+
 					(nodeNow->*(nodeNow->fptr))();
+
 					changeList.lock();
 					nodeNow->running = false;//修改数值
+					nodeNow->maintain(ndp.it, ndp.ptr);
 					changeList.unlock();
 
 				}
@@ -33,15 +36,15 @@ namespace MAT {
 	}
 
 
-	inline void TThread::tryCreateThread() {
+	inline void TThreadPool::tryCreateThread() {
 		while (size > threads.size() and threads.size() < maxThreadsSize) {
 			threads.push_back(nullptr);
-			threads.back() = new std::thread(&TThread::run, this, --threads.end());
+			threads.back() = new std::thread(&TThreadPool::run, this, --threads.end());
 		}
 	}
 
 
-	bool TThread::tryDeleteThread(std::list<std::thread*>::iterator it) {
+	bool TThreadPool::tryDeleteThread(std::list<std::thread*>::iterator it) {
 		if (size < threads.size()) {
 			if (forDelete != nullptr) {
 				while (forDelete->joinable());
@@ -54,6 +57,6 @@ namespace MAT {
 		return false;
 	}
 
-	inline TThread::TThread(): maxThreadsSize(0), size(0) {}
-	inline TThread::~TThread(){}
+	inline TThreadPool::TThreadPool(): maxThreadsSize(0), size(0) {}
+	inline TThreadPool::~TThreadPool(){}
 }
