@@ -2,7 +2,11 @@
 //
 
 #include <iostream>
-#include "../../src/ThreadTree.h"
+
+#define THREADTREE_DEBUG
+#include<json>
+using json = nlohmann::json;
+#include<ThreadTree.h>
 
 using namespace std;
 class A :public MAT::TTNode {
@@ -10,13 +14,13 @@ public:
 
 
 	
-	A(MAT::TThreadPool* belong, int a) :MAT::TTNode(belong) {
+	A(MAT::TThreadPool* belong, int a) : MAT::TTNode(belong) {
 		fptr = static_cast<Fptr>(&A::foo);
 		for (int i = 0; i < a; i++) {
 			new A(this, a - 1);
 		}
 	}
-	A(MAT::TTNode* wrap, int a) :MAT::TTNode(wrap) {
+	A(MAT::TTNode* wrap, int a) : MAT::TTNode(wrap) {
 		fptr = static_cast<Fptr>(&A::foo);
 		for (int i = 0; i < a; i++) {
 			new A(this, a - 1);
@@ -35,6 +39,7 @@ int main()
 	A a2(&ttp, 3);
 	A a3(&ttp, 3);
 	auto a = ttp.nodeC.getNodeLower();
+	cout<<ttp.getJson().dump();
 }
 
 // 运行程序: Ctrl + F5 或调试 >“开始执行(不调试)”菜单

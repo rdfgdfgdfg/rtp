@@ -57,7 +57,7 @@ namespace MAT {
 		return false;
 	}
 
-	inline TThreadPool::TThreadPool(): maxThreadsSize(0), size(0), forDelete(nullptr) {
-	}
+	inline TThreadPool::TThreadPool(): maxThreadsSize(0), size(0), forDelete(nullptr) {}
+
 	inline TThreadPool::~TThreadPool(){}
 }

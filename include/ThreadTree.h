@@ -4,6 +4,12 @@
 #include <thread>
 #include <mutex>
 
+#ifdef THREADTREE_DEBUG
+//#include <json.hpp> 
+//from https://github.com/ArthurSonzogni/nlohmann_json_cmake_fetchcontent/tree/master/include/nlohmann/json.hpp
+//project : nlohmann/json
+#endif
+
 namespace MAT {
 	using size_c = size_t;
 
@@ -86,6 +92,10 @@ namespace MAT {
 		};
 
 		NodeC() :activeIt(list.end()) {};
+#ifdef THREADTREE_DEBUG
+		json getJson();
+#endif
+
 	};
 
 	class TThreadPool {
@@ -117,6 +127,9 @@ namespace MAT {
 		void setMaxThreadsSize();
 
 		void run(std::list<std::thread*>::iterator it);
+#ifdef THREADTREE_DEBUG
+		json getJson();
+#endif
 	};
 
 	class TTNode {
@@ -185,6 +198,9 @@ namespace MAT {
 		TTNode(const TTNode&) = delete;
 		TTNode(const TTNode&&) = delete;
 
+#ifdef THREADTREE_DEBUG
+		json getJson();//获取调试信息
+#endif
 	};
 
 
@@ -197,3 +213,6 @@ namespace MAT {
 #include "ThreadTree/NodeC-func.h"
 #include "ThreadTree/TTNode-func.h"
 #include "ThreadTree/TThreadPool-func.h"
+#ifdef THREADTREE_DEBUG
+#include "../test/common/debug.h"
+#endif
