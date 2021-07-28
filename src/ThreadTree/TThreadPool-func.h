@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 namespace MAT {
 	void TThreadPool::run(std::list<std::thread*>::iterator it) {
@@ -57,6 +57,7 @@ namespace MAT {
 		return false;
 	}
 
-	inline TThreadPool::TThreadPool(): maxThreadsSize(0), size(0) {}
+	inline TThreadPool::TThreadPool(): maxThreadsSize(0), size(0), forDelete(nullptr) {
+	}
 	inline TThreadPool::~TThreadPool(){}
 }

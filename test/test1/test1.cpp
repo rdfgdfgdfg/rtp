@@ -1,4 +1,4 @@
-// test1.cpp : 此文件包含 "main" 函数。程序执行将在此处开始并结束。
+﻿// test1.cpp : 此文件包含 "main" 函数。程序执行将在此处开始并结束。
 //
 
 #include <iostream>
@@ -12,14 +12,12 @@ public:
 	
 	A(MAT::TThreadPool* belong, int a) :MAT::TTNode(belong) {
 		fptr = static_cast<Fptr>(&A::foo);
-		unlock();
 		for (int i = 0; i < a; i++) {
 			new A(this, a - 1);
 		}
 	}
 	A(MAT::TTNode* wrap, int a) :MAT::TTNode(wrap) {
 		fptr = static_cast<Fptr>(&A::foo);
-		unlock();
 		for (int i = 0; i < a; i++) {
 			new A(this, a - 1);
 		}
@@ -29,14 +27,47 @@ public:
 	}
 };
 
+class B {
+public:
+	int a;
+	B():a(0) {
+		cout << "B构造" << endl;
+	}
+	B(int a) :a(a) {
+		cout << "B构造" << endl;
+	}
+	~B() {
+		cout << "B析构" << endl;
+	}
+	B(B&&b) {
+		a = b.a;
+		b.a = 0;
+		cout << "B移动" << endl;
+	}
+};
+
+inline B getB1() {
+	B b;
+	return b;
+}
+
+inline B& getB2() {
+	B b;
+	return b;
+}
+
+inline B&& getB3() {
+	return B();
+}
+
 int main()
 {
-	MAT::TThreadPool tth;
-	A tnode1(&tth, 3);
-	A tnode2(&tth, 3);
 
-	A tnode3(&tth, 3);
-	auto a = tth.nodeC.getNodeLower();
+	MAT::TThreadPool ttp;
+	A a1(&ttp, 3);
+	A a2(&ttp, 3);
+	A a3(&ttp, 3);
+	auto a = ttp.nodeC.getNodeLower();
 }
 
 // 运行程序: Ctrl + F5 或调试 >“开始执行(不调试)”菜单

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <list>
 #include <thread>
@@ -88,59 +88,12 @@ namespace MAT {
 		NodeC() :activeIt(list.end()) {};
 	};
 
-
-	class TTNode {//此类线程安全
-	public:
-		using Fptr = void (TTNode::*)();//用户函数指针
-		friend class NodeC;
-	protected:
-		//初始化为nullptr，表示不要试图执行该线程节点。
-		Fptr fptr;//用户函数，会被run调用
-		Fptr de_fptr;//当fptr为nullptr时，且nodeC为空时，fptr会变为de_fptr
-
-		TTNode(TThreadPool* belong);//线程锁不对称
-
-		/*尽管TTNode会自动在nodeC中存储你创建的线程节点，但由于TTNode会自动移除运行完毕且nodeC为空的节点，
-		你需要保存它的指针防止内存泄露 */
-		TTNode(TTNode* wrap);//线程锁不对称
-
-		void unlock();
-
-	private:
-
-		TThreadPool* const belong;//包含此节点的线程池
-		
-		//该线程节点是否正在被执行。初始化为false
-		bool running;
-
-		NodeC nodeC;
-
-		friend class TThreadPool;
-
-		/*
-		* 线程不安全
-		* 在适当的时候将 de_fptr 赋给 fptr
-		确保 fptr != nullptr 或 nodeC.empty()
-		在节点无效时移除自己（return true)（不会析构）
-		*/
-		bool maintain(NodeC::iterator it, NodeC* ptr);//维护状态
-
-		bool fptrNULL();
-	public:
-		virtual ~TTNode() {};
-
-
-		TTNode() = delete;
-		TTNode(const TTNode&) = delete;
-		TTNode(const TTNode&&) = delete;
-
-	};
-
-
 	class TThreadPool {
 		friend class TTNode;
 		friend class NodeC;
+		friend class guard;
 	public://test
+
 		NodeC nodeC;
 		size_c maxThreadsSize;//最大线程数量
 		size_c size;//节点数量
@@ -154,14 +107,86 @@ namespace MAT {
 	public:
 
 		TThreadPool();
+
+		TThreadPool(const TThreadPool&) = delete;
+		TThreadPool(const TThreadPool&&) = delete;
+
 		~TThreadPool();
 		void join();
 		void start();//开始线程池。
 		void setMaxThreadsSize();
 
 		void run(std::list<std::thread*>::iterator it);
+	};
+
+	class TTNode {
+	public:
+		using Fptr = void (TTNode::*)();//用户函数指针
+		friend class NodeC;
+		friend class TThreadPool;
+
+		class Guard {
+			friend class TTNode;
+			std::mutex* ptr;
+			inline Guard(std::mutex* ptr) : ptr(ptr) {
+				ptr->lock();
+			}
+			inline Guard(Guard&& guard) : ptr(guard.ptr) {
+				guard.ptr = nullptr;
+			}
+		public:
+			inline ~Guard() {
+				if (ptr != nullptr) {
+					ptr->unlock();
+				}
+			}
+
+		};
+	protected:
+		//初始化为nullptr，表示不要试图执行该线程节点。
+		Fptr fptr;//用户函数，会被run调用
+		Fptr de_fptr;//当fptr为nullptr时，且nodeC为空时，fptr会变为de_fptr
+
+		TTNode(TThreadPool* belong);//线程不安全
+
+		/*尽管TTNode会自动在nodeC中存储你创建的线程节点，但由于TTNode会自动移除运行完毕且nodeC为空的节点，
+		你需要保存它的指针防止内存泄露 */
+		TTNode(TTNode* wrap);//线程不安全
+
+		~TTNode() {};
+
+		void lock();
+		void unlock();
+		Guard getGuard();
+
+	private:
+
+		TThreadPool* const belong;//包含此节点的线程池
+		
+		//该线程节点是否正在被执行。初始化为false
+		bool running;
+
+		NodeC nodeC;
+
+
+		/*
+		* 线程不安全
+		* 在适当的时候将 de_fptr 赋给 fptr
+		确保 fptr != nullptr 或 nodeC.empty()
+		在节点无效时移除自己（return true)（不会析构）
+		*/
+		bool maintain(NodeC::iterator it, NodeC* ptr);//维护状态
+
+		bool fptrNULL();
+	public:
+		
+
+		TTNode() = delete;
+		TTNode(const TTNode&) = delete;
+		TTNode(const TTNode&&) = delete;
 
 	};
+
 
 	
 
@@ -171,4 +196,4 @@ namespace MAT {
 
 #include "ThreadTree/NodeC-func.h"
 #include "ThreadTree/TTNode-func.h"
-#include "ThreadTree/TThread-func.h"
+#include "ThreadTree/TThreadPool-func.h"

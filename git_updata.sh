@@ -6,4 +6,5 @@ echo 发布说明?
 read commitMsg
 git commit -m "$commitMsg"
 git push origin main
+echo 完成，按任意键退出
 read
