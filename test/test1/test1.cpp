@@ -27,39 +27,6 @@ public:
 	}
 };
 
-class B {
-public:
-	int a;
-	B():a(0) {
-		cout << "B构造" << endl;
-	}
-	B(int a) :a(a) {
-		cout << "B构造" << endl;
-	}
-	~B() {
-		cout << "B析构" << endl;
-	}
-	B(B&&b) {
-		a = b.a;
-		b.a = 0;
-		cout << "B移动" << endl;
-	}
-};
-
-inline B getB1() {
-	B b;
-	return b;
-}
-
-inline B& getB2() {
-	B b;
-	return b;
-}
-
-inline B&& getB3() {
-	return B();
-}
-
 int main()
 {
 
