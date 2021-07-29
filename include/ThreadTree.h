@@ -121,6 +121,8 @@ namespace MAT {
 
 		void tryCreateThread();//尝试创建线程（线程不安全）
 		bool tryDeleteThread(std::list<std::thread*>::iterator it);//尝试删除线程（线程不安全）
+
+		void run(std::list<std::thread*>::iterator it);
 	protected:
 		std::mutex changeList;
 	public:
@@ -133,9 +135,7 @@ namespace MAT {
 		~TThreadPool();
 		void join();
 		void start();//开始线程池。
-		void setMaxThreadsSize();
-
-		void run(std::list<std::thread*>::iterator it);
+		void setMaxThreadsSize(size_c size);
 #ifdef THREADTREE_DEBUG
 		json getJson();
 #endif
@@ -199,7 +199,7 @@ namespace MAT {
 		/*
 		* 线程不安全
 		* 在适当的时候将 de_fptr 赋给 fptr
-		确保 fptr != nullptr 或 nodeC.empty()
+		确保 fptr != nullptr 或 !nodeC.empty()
 		在节点无效时移除自己（return true)（不会析构）
 		*/
 		bool maintain(NodeC::iterator it, NodeC* ptr);//维护状态
@@ -221,7 +221,7 @@ namespace MAT {
 //NodeC-func
 
 	inline void NodeC::next() {
-		if (activeIt == list.end()) {
+		if (activeIt == --list.end()) {
 			activeIt = list.begin();
 		}
 		else {
@@ -248,7 +248,7 @@ namespace MAT {
 		belong->size--;
 		
 		if (activeIt == it) {
-			if (activeIt == list.end()) {//删除的线程在线程链末尾
+			if (activeIt == --list.end()) {//删除的线程在线程链末尾
 				if (activeIt == list.begin()) {//线程池线程中只有待删除线程
 					list.erase(it);
 					activeIt._Ptr = nullptr;
@@ -280,10 +280,16 @@ namespace MAT {
 		o ^ o
 		
 		*/
+		std::cout << getJson() << std::endl;
 		pos rt;//返回值
+		if (empty()) {
+			rt.ptr = nullptr;
+			return rt;
+		}
 		rt.ptr = this;
 		next();
 		rt.it = activeIt;
+
 		TTNode* ptr = *rt.it;//要执行的节点的指针
 		while (true) {//循环
 			if (ptr->maintain(rt.it, rt.ptr)) {//维护
@@ -310,7 +316,7 @@ o ^ o(新ptr是此层，指向节点的指针）
 
 */
 						rt.ptr->next();
-						rt.ptr = &ptr->nodeC;
+						rt.ptr = &ptr->nodeC;//error pos
 						rt.it = rt.ptr->activeIt;
 						ptr = *rt.it;
 					}
@@ -321,13 +327,15 @@ o ^ o(新ptr是此层，指向节点的指针）
 
 
 //---------------------------------------------------------------------
-//TTNode-func
-void TThreadPool::run(std::list<std::thread*>::iterator it) {
+//TThreadPool-func
+	void TThreadPool::run(std::list<std::thread*>::iterator it) {
 		NodeC::pos ndp;
 		while (true) {//主循环
+			this;
 			NodeC* nodeCNow = &nodeC;//将要执行的节点的节点容器的指针
 			TTNode* nodeNow = nullptr;//将要执行的节点的指针
 			while (true) {//单链循环
+				std::cout << getJson() << std::endl;
 				changeList.lock();
 				if (tryDeleteThread(it)) {
 					changeList.unlock();
@@ -346,7 +354,6 @@ void TThreadPool::run(std::list<std::thread*>::iterator it) {
 					nodeNow->running = false;//修改数值
 					nodeNow->maintain(ndp.it, ndp.ptr);
 					changeList.unlock();
-
 				}
 				else {
 					changeList.unlock();
@@ -356,20 +363,23 @@ void TThreadPool::run(std::list<std::thread*>::iterator it) {
 		}
 	}
 
-
 	inline void TThreadPool::tryCreateThread() {
-		bool nodesMore = size > threads.size();
-		bool threadsFewer = threads.size() < maxThreadsSize;
-		bool cond = nodesMore & threadsFewer;
-		while (cond) {
+		while ((size > threads.size()) & (threads.size() < maxThreadsSize)) {
 			threads.push_back(nullptr);
 			threads.back() = new std::thread(&TThreadPool::run, this, --threads.end());
 		}
 	}
 
+	void TThreadPool::setMaxThreadsSize(size_c size) {
+		changeList.lock();
+		maxThreadsSize = size;
+		tryCreateThread();
+		changeList.unlock();
+	}
 
 	bool TThreadPool::tryDeleteThread(std::list<std::thread*>::iterator it) {
-		if (size < threads.size()) {
+		auto a = threads.size();
+		if (size < a) {
 			if (forDelete != nullptr) {
 				while (forDelete->joinable());
 			}
@@ -379,6 +389,27 @@ void TThreadPool::run(std::list<std::thread*>::iterator it) {
 			return true;
 		}
 		return false;
+	}
+
+	void TThreadPool::start() {
+		changeList.lock();
+		tryCreateThread();
+		changeList.unlock();
+	}
+
+	void TThreadPool::join() {
+		while (true) {
+			changeList.lock();
+			if (threads.empty()) {
+				changeList.unlock();
+				return;
+			}
+			changeList.unlock();
+			try {
+				threads.front()->join();
+			}
+			catch (...) {}
+		}
 	}
 
 	inline TThreadPool::TThreadPool(): maxThreadsSize(0), size(0), forDelete(nullptr) {}
@@ -391,12 +422,14 @@ void TThreadPool::run(std::list<std::thread*>::iterator it) {
 		belong(belong), fptr(nullptr), de_fptr(nullptr), running(false) {
 		belong->nodeC.push_back(this);
 		belong->size++;
+		belong->tryCreateThread();
 	};
 
 	TTNode::TTNode(TTNode* wrap) :
 		belong(wrap->belong), fptr(nullptr), de_fptr(nullptr), running(false) {
 		wrap->nodeC.push_back(this);
 		belong->size++;
+		belong->tryCreateThread();
 	};
 
 	inline bool TTNode::fptrNULL() {
@@ -440,6 +473,7 @@ void TThreadPool::run(std::list<std::thread*>::iterator it) {
 
 
 	json TThreadPool::getJson() {//输出调试信息
+		changeList.lock();
 		json jrt;
 		jrt["type"] = "TThreadPool";
 		jrt["size"] = this->size;
@@ -448,6 +482,7 @@ void TThreadPool::run(std::list<std::thread*>::iterator it) {
 			jrt["threads"].push_back(json(decPtr(i)));
 		}
 		jrt["nodeC"] = nodeC.getJson();
+		changeList.unlock();
 		return jrt;
 	}
 
