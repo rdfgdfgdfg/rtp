@@ -5,12 +5,16 @@
 #include <mutex>
 
 #ifdef THREADTREE_DEBUG
-//#include <json.hpp> 
+#include <json.hpp> 
 //from https://github.com/ArthurSonzogni/nlohmann_json_cmake_fetchcontent/tree/master/include/nlohmann/json.hpp
 //project : nlohmann/json
 #endif
 
 namespace MAT {
+#ifdef THREADTREE_DEBUG
+	using json = nlohmann::json;
+#endif
+
 	using size_c = size_t;
 
 	class TThreadPool;//线程池
@@ -203,16 +207,266 @@ namespace MAT {
 #endif
 	};
 
+//-----------------------------------------------------------------
+//NodeC-func
 
-	
+	inline void NodeC::next() {
+		if (activeIt == list.end()) {
+			activeIt = list.begin();
+		}
+		else {
+			activeIt++;
+		}
+	}
 
-	
+	inline bool NodeC::empty() {
+		return list.empty();
+	}
 
-}
+	inline void NodeC::push_back(TTNode* ptr) {
+		if (list.empty()) {
+			list.push_back(ptr);
+			activeIt = list.begin();
+		}
+		else {
+			list.push_back(ptr);
+		}
+	}
 
-#include "ThreadTree/NodeC-func.h"
-#include "ThreadTree/TTNode-func.h"
-#include "ThreadTree/TThreadPool-func.h"
+	void NodeC::erase(iterator it) {
+		TThreadPool* belong = (*it)->belong;
+		belong->size--;
+		
+		if (activeIt == it) {
+			if (activeIt == list.end()) {//删除的线程在线程链末尾
+				if (activeIt == list.begin()) {//线程池线程中只有待删除线程
+					list.erase(it);
+					activeIt._Ptr = nullptr;
+				}
+				else {//线程池当前可访问的线程中还有其他线程
+					list.erase(it);
+					activeIt = list.begin();
+				}
+			}
+			else {
+				activeIt++;
+				list.erase(it);
+			}
+		}
+		else {
+			list.erase(it);
+		}
+	}
+
+
+
+	NodeC::pos NodeC::getNodeLower() {
+		/*
+		|
+		_____________(rt.ptr指向容器,it是容器的迭代器)
+		o ^ o ^ o ^ o(ptr是此层，指向节点的指针）
+		|       |
+		_____
+		o ^ o
+		
+		*/
+		pos rt;//返回值
+		rt.ptr = this;
+		next();
+		rt.it = activeIt;
+		TTNode* ptr = *rt.it;//要执行的节点的指针
+		while (true) {//循环
+			if (ptr->maintain(rt.it, rt.ptr)) {//维护
+				rt.ptr = nullptr;//若节点被移除
+				return rt;//报错
+			}
+			else {//若节点存在
+				if (ptr->running) {
+					rt.ptr = nullptr;//若节点正在被执行
+					return rt;//报错
+				}
+				else {
+					if (!ptr->fptrNULL()) {//满足条件
+						return rt;
+					}
+					else {
+						/*
+|
+_____________(rt.ptr指向容器,it是容器的迭代器)
+o ^ o ^ o ^ o(ptr是此层，指向节点的指针）
+|       |
+_____(新的rt.ptr指向ptr的容器,it是新容器的迭代器)
+o ^ o(新ptr是此层，指向节点的指针）
+
+*/
+						rt.ptr->next();
+						rt.ptr = &ptr->nodeC;
+						rt.it = rt.ptr->activeIt;
+						ptr = *rt.it;
+					}
+				}
+			}
+		}
+	}
+
+
+//---------------------------------------------------------------------
+//TTNode-func
+void TThreadPool::run(std::list<std::thread*>::iterator it) {
+		NodeC::pos ndp;
+		while (true) {//主循环
+			NodeC* nodeCNow = &nodeC;//将要执行的节点的节点容器的指针
+			TTNode* nodeNow = nullptr;//将要执行的节点的指针
+			while (true) {//单链循环
+				changeList.lock();
+				if (tryDeleteThread(it)) {
+					changeList.unlock();
+					return;
+				}
+				ndp = nodeCNow->getNodeLower();//获取下一个节点的位置
+				if (ndp.ptr != nullptr) {//检验合法性
+					nodeNow = *ndp.it;//赋值
+					nodeCNow = &nodeNow->nodeC;
+					nodeNow->running = true;
+					changeList.unlock();
+
+					(nodeNow->*(nodeNow->fptr))();
+
+					changeList.lock();
+					nodeNow->running = false;//修改数值
+					nodeNow->maintain(ndp.it, ndp.ptr);
+					changeList.unlock();
+
+				}
+				else {
+					changeList.unlock();
+					break;
+				}
+			}
+		}
+	}
+
+
+	inline void TThreadPool::tryCreateThread() {
+		bool nodesMore = size > threads.size();
+		bool threadsFewer = threads.size() < maxThreadsSize;
+		bool cond = nodesMore & threadsFewer;
+		while (cond) {
+			threads.push_back(nullptr);
+			threads.back() = new std::thread(&TThreadPool::run, this, --threads.end());
+		}
+	}
+
+
+	bool TThreadPool::tryDeleteThread(std::list<std::thread*>::iterator it) {
+		if (size < threads.size()) {
+			if (forDelete != nullptr) {
+				while (forDelete->joinable());
+			}
+			delete forDelete;
+			forDelete = *it;
+			threads.erase(it);
+			return true;
+		}
+		return false;
+	}
+
+	inline TThreadPool::TThreadPool(): maxThreadsSize(0), size(0), forDelete(nullptr) {}
+
+	inline TThreadPool::~TThreadPool(){}
+
+//---------------------------------------------------------------------
+//TTNode-func
+	TTNode::TTNode(TThreadPool* belong) :
+		belong(belong), fptr(nullptr), de_fptr(nullptr), running(false) {
+		belong->nodeC.push_back(this);
+		belong->size++;
+	};
+
+	TTNode::TTNode(TTNode* wrap) :
+		belong(wrap->belong), fptr(nullptr), de_fptr(nullptr), running(false) {
+		wrap->nodeC.push_back(this);
+		belong->size++;
+	};
+
+	inline bool TTNode::fptrNULL() {
+		return fptr == nullptr;
+	}
+
+	inline bool TTNode::maintain(NodeC::iterator it, NodeC* ptr) {
+		if (nodeC.empty()) {
+			if (de_fptr != nullptr) {
+				fptr = de_fptr;
+			}
+			if (fptr == nullptr) {
+				ptr->erase(it);
+				return true;
+			}
+		}
+		return false;
+	}
+
+	inline void TTNode::lock() {
+		belong->changeList.lock();
+	}
+
+	inline void TTNode::unlock() {
+		belong->changeList.unlock();
+	}
+
+	inline TTNode::Guard TTNode::getGuard() {
+		return Guard(&belong->changeList);
+	}
+
+//---------------------------------------------------------------------
+//debug code
 #ifdef THREADTREE_DEBUG
-#include "../test/common/debug.h"
+	std::string decPtr(void* ptr) {
+		std::stringstream ss;
+		ss.unsetf(std::ios_base::dec);
+		ss << ptr;
+		return ss.str();
+	}
+
+
+	json TThreadPool::getJson() {//输出调试信息
+		json jrt;
+		jrt["type"] = "TThreadPool";
+		jrt["size"] = this->size;
+		jrt["threads"] = json::array();
+		for (auto i : threads) {
+			jrt["threads"].push_back(json(decPtr(i)));
+		}
+		jrt["nodeC"] = nodeC.getJson();
+		return jrt;
+	}
+
+	json NodeC::getJson() {
+		json jrt;
+		jrt["this"] = decPtr(this);
+		if (empty()) {
+			jrt["it"] = nullptr;
+		}
+		else {
+			jrt["it"] = decPtr(*activeIt);
+		}
+		
+		jrt["list"] = json::array();
+		
+		for (auto i : list) {
+			jrt["list"].push_back(i->getJson());
+		}
+		return jrt;
+	}
+
+	json TTNode::getJson() {
+		json jrt;
+		jrt["this"] = decPtr(this);
+		jrt["fptr"] = decPtr(*reinterpret_cast<void**>(&fptr));
+		jrt["de_fptr"] = decPtr(*reinterpret_cast<void**>(&de_fptr));
+		jrt["running"] = running;
+		jrt["nodeC"] = nodeC.getJson();
+		return jrt;
+	}
 #endif
+}

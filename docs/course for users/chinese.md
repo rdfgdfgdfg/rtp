@@ -28,6 +28,7 @@ rtp库将被线程池管理的线程称为线程节点
   
 由于fptr和de_fptr的类型为void (TTNode::\*)()，所以用户函数要在TTNode中声明————这显然是不可能的  
 我建议你派生TTNode类，在派生类中写代码，然后将函数指针赋给fptr  
+
 **如果线程节点的fptr和de_fptr都为nullptr，且nodeC为空，那么它会被移除（在nodeC中的线程节点被erase）（不析构）。**
   
 ## 代码   
