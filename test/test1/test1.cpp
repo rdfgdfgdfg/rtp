@@ -28,7 +28,7 @@ public:
 		init();
 	}
 	void foo() {
-		cout << belong->getJson() << endl;
+		cout << "foo" << endl;
 		fptr = nullptr;
 	}
 	//->foo
@@ -40,13 +40,50 @@ public:
 	}
 };
 
-int main()
-{
+void test0() {
 	MAT::TThreadPool ttp;
-	A a0(&ttp, 2);
-	A a1(&ttp, 2);
+	A a0(&ttp, 0);
 	ttp.setMaxThreadsSize(1);
 	ttp.start();
-	Sleep(100000000);
+	ttp.join();
+}
+
+void test1() {
+	MAT::TThreadPool ttp;
+	A a0(&ttp, 2);
+	ttp.setMaxThreadsSize(1);
+	ttp.start();
+	ttp.join();
+}
+
+void test2() {//
+	MAT::TThreadPool ttp;
+	A a0(&ttp, 3);
+	ttp.setMaxThreadsSize(1);
+	ttp.start();
+	ttp.join();
+}
+
+void test3() {
+	MAT::TThreadPool ttp;
+	A a0(&ttp, 0);
+	A a1(&ttp, 0);
+	ttp.setMaxThreadsSize(1);
+	ttp.start();
+	ttp.join();
+}
+
+void test4() {
+	MAT::TThreadPool ttp;
+	A a0(&ttp, 0);
+	A a1(&ttp, 1);
+	ttp.setMaxThreadsSize(1);
+	ttp.start();
+	ttp.join();
+}
+
+int main()
+{
+	test3();
 	return 0;
 }
