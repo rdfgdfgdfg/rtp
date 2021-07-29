@@ -35,6 +35,9 @@ namespace MAT {
 		struct pos;//用于存放getNodeLower返回值的表示位置的结构体
 		using iterator = std::list<TTNode*>::iterator;
 	private:
+#ifdef THREADTREE_DEBUG
+	public:
+#endif
 		/*
 		* push_back可添加；getNodeLower可访问，可调用erase删除；empty next可访问
 		* 存放由用户函数创建的线程节点。内部的节点指针将会被getNodeLower访问并迭代
@@ -106,7 +109,9 @@ namespace MAT {
 		friend class TTNode;
 		friend class NodeC;
 		friend class guard;
-	public://test
+#ifdef THREADTREE_DEBUG
+	public:
+#endif
 
 		NodeC nodeC;
 		size_c maxThreadsSize;//最大线程数量
@@ -160,6 +165,9 @@ namespace MAT {
 
 		};
 	protected:
+#ifdef THREADTREE_DEBUG
+	public:
+#endif
 		//初始化为nullptr，表示不要试图执行该线程节点。
 		Fptr fptr;//用户函数，会被run调用
 		Fptr de_fptr;//当fptr为nullptr时，且nodeC为空时，fptr会变为de_fptr
@@ -177,7 +185,9 @@ namespace MAT {
 		Guard getGuard();
 
 	private:
-
+#ifdef THREADTREE_DEBUG
+	public:
+#endif
 		TThreadPool* const belong;//包含此节点的线程池
 		
 		//该线程节点是否正在被执行。初始化为false

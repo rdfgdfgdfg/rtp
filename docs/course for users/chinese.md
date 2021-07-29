@@ -1,9 +1,7 @@
 # 用户教程
 ## 配置
-要想使用rtp库，你需要确保你的编译器找得到rtp/src/ThreadTree.h并include  
-最简单的方法是include<绝对路径>  
-编译时，由于系统调度问题，解决方案配置必须是release版本，否则可能会引发错误  
-如果你的解决方案版本必须是debug，你可以将库以release版本编译成lib再调用  
+include "rtp/include/ThreadTree.h" 来使用  
+注意 编译时尽可能采用release选项来避免应系统调度发生的错误
   
 ## 理论  
 递归线程池管理线程，并且可以通过递归结构合理分配资源  

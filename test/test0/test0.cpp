@@ -1,5 +1,5 @@
 ﻿// test1.cpp : 此文件包含 "main" 函数。程序执行将在此处开始并结束。
-//
+// test NodeC::getNodeLower()
 
 #include "test0.h"
 
@@ -34,9 +34,16 @@ int main()
 	A a1(&ttp, 3);
 	A a2(&ttp, 3);
 	A a3(&ttp, 3);
+	nlohmann::json jlog = nlohmann::json::array();
 	auto a = ttp.nodeC.getNodeLower();
+	jlog.push_back(ttp.getJson());
+
 	a = ttp.nodeC.getNodeLower();
-	cout << ttp.getJson().dump();
+	jlog.push_back(ttp.getJson());
+
+	a = (*a.it)->nodeC.getNodeLower();
+	jlog.push_back(ttp.getJson());
+	cout << jlog.dump();
 }
 
 // 运行程序: Ctrl + F5 或调试 >“开始执行(不调试)”菜单
