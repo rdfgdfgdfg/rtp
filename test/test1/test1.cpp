@@ -10,7 +10,7 @@ public:
 	int a;
 	A** ptr;
 	void init() {
-		fptr = static_cast<Fptr>(&A::foo);
+		setFptr(&A::foo);
 		if (a > 0) {
 			ptr = new A * [a];
 		}
@@ -18,7 +18,7 @@ public:
 			ptr = nullptr;
 		}
 		for (int i = 0; i < a; i++) {
-			new A(this, a - 1);
+			ptr[i] = new A(this, a - 1);
 		}
 	}
 	A(MAT::TThreadPool* belong, int a) : MAT::TTNode(belong), a(a){
@@ -29,14 +29,16 @@ public:
 	}
 	void foo() {
 		cout << "foo" << endl;
-		fptr = nullptr;
+		setDFptr(&A::de_foo);
 	}
 	//->foo
 	void de_foo() {
 		for (int i = 0; i < a; i++) {
 			delete ptr[i];
 		}
-		delete ptr;
+		delete[] ptr;
+		cout << "delete foo" << endl;
+		setOver();
 	}
 };
 
@@ -44,7 +46,6 @@ void test0() {
 	MAT::TThreadPool ttp;
 	A a0(&ttp, 0);
 	ttp.setMaxThreadsSize(1);
-	ttp.start();
 	ttp.join();
 }
 
@@ -58,7 +59,7 @@ void test1() {
 
 void test2() {//
 	MAT::TThreadPool ttp;
-	A a0(&ttp, 3);
+	A a0(&ttp, 1);
 	ttp.setMaxThreadsSize(1);
 	ttp.start();
 	ttp.join();
@@ -73,7 +74,7 @@ void test3() {
 	ttp.join();
 }
 
-void test4() {
+void test4() {//
 	MAT::TThreadPool ttp;
 	A a0(&ttp, 0);
 	A a1(&ttp, 1);
@@ -84,6 +85,6 @@ void test4() {
 
 int main()
 {
-	test3();
+	test2();
 	return 0;
 }

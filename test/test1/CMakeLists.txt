@@ -4,6 +4,9 @@
 set(CMAKE_CXX_STANDARD 17)
 cmake_minimum_required (VERSION 3.8)
 
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
+set(CMAKE_BUILD_TYPE "Debug")
 project ("test1")
 
 # 将源代码添加到此项目的可执行文件。

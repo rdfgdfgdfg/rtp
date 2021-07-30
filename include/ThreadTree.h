@@ -168,9 +168,6 @@ namespace MAT {
 #ifdef THREADTREE_DEBUG
 	public:
 #endif
-		//初始化为nullptr，表示不要试图执行该线程节点。
-		Fptr fptr;//用户函数，会被run调用
-		Fptr de_fptr;//当fptr为nullptr时，且nodeC为空时，fptr会变为de_fptr
 
 		TTNode(TThreadPool* belong);//线程不安全
 
@@ -182,12 +179,20 @@ namespace MAT {
 
 		void lock();
 		void unlock();
+
+		template <class T> void setFptr(T ptr);//设置下一个要运行的函数
+		template <class T> void setDFptr(T ptr);//运行结束，等待子线程节点运行，设置子线程节点运行结束后运行的函数
+		void setOver();//彻底结束，此节点无效化
 		Guard getGuard();
 
 	private:
 #ifdef THREADTREE_DEBUG
 	public:
 #endif
+		//初始化为nullptr，表示不要试图执行该线程节点。
+		Fptr fptr;//用户函数，会被run调用
+		Fptr de_fptr;//当fptr为nullptr时，且nodeC为空时，fptr会变为de_fptr
+
 		TThreadPool* const belong;//包含此节点的线程池
 		
 		//该线程节点是否正在被执行。初始化为false
@@ -335,7 +340,6 @@ o ^ o(新ptr是此层，指向节点的指针）
 			NodeC* nodeCNow = &nodeC;//将要执行的节点的节点容器的指针
 			TTNode* nodeNow = nullptr;//将要执行的节点的指针
 			while (true) {//单链循环
-				std::cout << getJson() << std::endl;
 				changeList.lock();
 				if (tryDeleteThread(it)) {
 					changeList.unlock();
@@ -440,6 +444,7 @@ o ^ o(新ptr是此层，指向节点的指针）
 		if (nodeC.empty()) {
 			if (de_fptr != nullptr) {
 				fptr = de_fptr;
+				de_fptr = nullptr;
 			}
 			if (fptr == nullptr) {
 				ptr->erase(it);
@@ -447,6 +452,19 @@ o ^ o(新ptr是此层，指向节点的指针）
 			}
 		}
 		return false;
+	}
+
+	template <class T> inline void TTNode::setFptr(T ptr) {
+		fptr = static_cast<Fptr>(ptr);
+	}
+
+	template <class T> inline void TTNode::setDFptr(T ptr) {
+		de_fptr = static_cast<Fptr>(ptr);
+		fptr = nullptr;
+	}
+
+	inline void TTNode::setOver() {
+		fptr = nullptr;
 	}
 
 	inline void TTNode::lock() {
