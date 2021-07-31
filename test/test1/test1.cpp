@@ -29,15 +29,18 @@ public:
 	}
 	void foo() {
 		cout << "foo" << endl;
+		Sleep(1000);
 		setDFptr(&A::de_foo);
 	}
 	//->foo
 	void de_foo() {
+
 		for (int i = 0; i < a; i++) {
 			delete ptr[i];
 		}
 		delete[] ptr;
 		cout << "delete foo" << endl;
+		Sleep(1000);
 		setOver();
 	}
 };
@@ -53,7 +56,6 @@ void test1() {
 	MAT::TThreadPool ttp;
 	A a0(&ttp, 2);
 	ttp.setMaxThreadsSize(1);
-	ttp.start();
 	ttp.join();
 }
 
@@ -61,7 +63,6 @@ void test2() {//
 	MAT::TThreadPool ttp;
 	A a0(&ttp, 1);
 	ttp.setMaxThreadsSize(1);
-	ttp.start();
 	ttp.join();
 }
 
@@ -70,7 +71,6 @@ void test3() {
 	A a0(&ttp, 0);
 	A a1(&ttp, 0);
 	ttp.setMaxThreadsSize(1);
-	ttp.start();
 	ttp.join();
 }
 
@@ -79,12 +79,27 @@ void test4() {//
 	A a0(&ttp, 0);
 	A a1(&ttp, 1);
 	ttp.setMaxThreadsSize(1);
-	ttp.start();
+	ttp.join();
+}
+
+void test5() {//
+	MAT::TThreadPool ttp;
+	A a0(&ttp, 1);
+	A a1(&ttp, 1);
+	ttp.setMaxThreadsSize(2);
+	ttp.join();
+}
+
+void test6() {//
+	MAT::TThreadPool ttp;
+	A a0(&ttp, 1);
+	A a1(&ttp, 1);
+	ttp.setMaxThreadsSize(6);
 	ttp.join();
 }
 
 int main()
 {
-	test2();
+	test5();
 	return 0;
 }

@@ -285,7 +285,6 @@ namespace MAT {
 		o ^ o
 		
 		*/
-		std::cout << getJson() << std::endl;
 		pos rt;//返回值
 		if (empty()) {
 			rt.ptr = nullptr;
@@ -297,6 +296,7 @@ namespace MAT {
 
 		TTNode* ptr = *rt.it;//要执行的节点的指针
 		while (true) {//循环
+			std::cout << std::endl << getJson() << std::endl;
 			if (ptr->maintain(rt.it, rt.ptr)) {//维护
 				rt.ptr = nullptr;//若节点被移除
 				return rt;//报错
@@ -320,8 +320,8 @@ _____(新的rt.ptr指向ptr的容器,it是新容器的迭代器)
 o ^ o(新ptr是此层，指向节点的指针）
 
 */
+						rt.ptr = &ptr->nodeC;
 						rt.ptr->next();
-						rt.ptr = &ptr->nodeC;//error pos
 						rt.it = rt.ptr->activeIt;
 						ptr = *rt.it;
 					}
@@ -440,7 +440,7 @@ o ^ o(新ptr是此层，指向节点的指针）
 		return fptr == nullptr;
 	}
 
-	inline bool TTNode::maintain(NodeC::iterator it, NodeC* ptr) {
+	bool TTNode::maintain(NodeC::iterator it, NodeC* ptr) {
 		if (nodeC.empty()) {
 			if (de_fptr != nullptr) {
 				fptr = de_fptr;
@@ -455,16 +455,22 @@ o ^ o(新ptr是此层，指向节点的指针）
 	}
 
 	template <class T> inline void TTNode::setFptr(T ptr) {
+		lock();
 		fptr = static_cast<Fptr>(ptr);
+		unlock();
 	}
 
 	template <class T> inline void TTNode::setDFptr(T ptr) {
+		lock();
 		de_fptr = static_cast<Fptr>(ptr);
 		fptr = nullptr;
+		unlock();
 	}
 
 	inline void TTNode::setOver() {
+		lock();
 		fptr = nullptr;
+		unlock();
 	}
 
 	inline void TTNode::lock() {
