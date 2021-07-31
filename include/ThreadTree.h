@@ -115,7 +115,7 @@ namespace MAT {
 
 		NodeC nodeC;
 		size_c maxThreadsSize;//最大线程数量
-		size_c size;//节点数量
+		size_c runableNodeSize;//节点数量
 		std::list<std::thread*> threads;
 		std::thread* forDelete;
 
@@ -180,8 +180,8 @@ namespace MAT {
 		void lock();
 		void unlock();
 
-		template <class T> void setFptr(T ptr);//设置下一个要运行的函数
-		template <class T> void setDFptr(T ptr);//运行结束，等待子线程节点运行，设置子线程节点运行结束后运行的函数
+		template <class T> void setFptr(T ptr);//设置下一个要运行的函数（必须可执行）
+		template <class T> void setDFptr(T ptr);//运行结束，等待子线程节点运行，设置子线程节点运行结束后运行的函数（必须可执行）
 		void setOver();//彻底结束，此节点无效化
 		Guard getGuard();
 
@@ -208,6 +208,7 @@ namespace MAT {
 		在节点无效时移除自己（return true)（不会析构）
 		*/
 		bool maintain(NodeC::iterator it, NodeC* ptr);//维护状态
+		bool runable();
 
 		bool fptrNULL();
 	public:
@@ -250,7 +251,10 @@ namespace MAT {
 
 	void NodeC::erase(iterator it) {
 		TThreadPool* belong = (*it)->belong;
-		belong->size--;
+		TTNode* ptr = *it;
+		if (!ptr->fptrNULL()) {
+			belong->runableNodeSize--;
+		}
 		
 		if (activeIt == it) {
 			if (activeIt == --list.end()) {//删除的线程在线程链末尾
@@ -302,13 +306,10 @@ namespace MAT {
 				return rt;//报错
 			}
 			else {//若节点存在
-				if (ptr->running) {
-					rt.ptr = nullptr;//若节点正在被执行
-					return rt;//报错
-				}
-				else {
-					if (!ptr->fptrNULL()) {//满足条件
-						return rt;
+				if (ptr->running | ptr->fptrNULL()) {
+					if (ptr->nodeC.empty()) {
+						rt.ptr = nullptr;//若节点正在被执行
+						return rt;//报错
 					}
 					else {
 						/*
@@ -325,6 +326,9 @@ o ^ o(新ptr是此层，指向节点的指针）
 						rt.it = rt.ptr->activeIt;
 						ptr = *rt.it;
 					}
+				}
+				else {
+					return rt;
 				}
 			}
 		}
@@ -368,7 +372,7 @@ o ^ o(新ptr是此层，指向节点的指针）
 	}
 
 	inline void TThreadPool::tryCreateThread() {
-		while ((size > threads.size()) & (threads.size() < maxThreadsSize)) {
+		while ((runableNodeSize > threads.size()) & (threads.size() < maxThreadsSize)) {
 			threads.push_back(nullptr);
 			threads.back() = new std::thread(&TThreadPool::run, this, --threads.end());
 		}
@@ -382,8 +386,7 @@ o ^ o(新ptr是此层，指向节点的指针）
 	}
 
 	bool TThreadPool::tryDeleteThread(std::list<std::thread*>::iterator it) {
-		auto a = threads.size();
-		if (size < a) {
+		if (runableNodeSize < threads.size()) {
 			if (forDelete != nullptr) {
 				while (forDelete->joinable());
 			}
@@ -416,7 +419,7 @@ o ^ o(新ptr是此层，指向节点的指针）
 		}
 	}
 
-	inline TThreadPool::TThreadPool(): maxThreadsSize(0), size(0), forDelete(nullptr) {}
+	inline TThreadPool::TThreadPool(): maxThreadsSize(0), runableNodeSize(0), forDelete(nullptr) {}
 
 	inline TThreadPool::~TThreadPool(){}
 
@@ -425,14 +428,12 @@ o ^ o(新ptr是此层，指向节点的指针）
 	TTNode::TTNode(TThreadPool* belong) :
 		belong(belong), fptr(nullptr), de_fptr(nullptr), running(false) {
 		belong->nodeC.push_back(this);
-		belong->size++;
 		belong->tryCreateThread();
 	};
 
 	TTNode::TTNode(TTNode* wrap) :
 		belong(wrap->belong), fptr(nullptr), de_fptr(nullptr), running(false) {
 		wrap->nodeC.push_back(this);
-		belong->size++;
 		belong->tryCreateThread();
 	};
 
@@ -443,6 +444,9 @@ o ^ o(新ptr是此层，指向节点的指针）
 	bool TTNode::maintain(NodeC::iterator it, NodeC* ptr) {
 		if (nodeC.empty()) {
 			if (de_fptr != nullptr) {
+				if (fptr == nullptr) {
+					belong->runableNodeSize++;
+				}
 				fptr = de_fptr;
 				de_fptr = nullptr;
 			}
@@ -455,13 +459,29 @@ o ^ o(新ptr是此层，指向节点的指针）
 	}
 
 	template <class T> inline void TTNode::setFptr(T ptr) {
+#ifdef THREADTREE_DEBUG
+		if (ptr == nullptr) {
+			throw ptr;
+		}
+#endif
 		lock();
+		if (fptr == nullptr) {
+			belong->runableNodeSize++;
+		}
 		fptr = static_cast<Fptr>(ptr);
 		unlock();
 	}
 
 	template <class T> inline void TTNode::setDFptr(T ptr) {
+#ifdef THREADTREE_DEBUG
+		if (ptr == nullptr) {
+			throw ptr;
+		}
+#endif
 		lock();
+		if (fptr != nullptr) {
+			belong->runableNodeSize--;
+		}
 		de_fptr = static_cast<Fptr>(ptr);
 		fptr = nullptr;
 		unlock();
@@ -469,6 +489,9 @@ o ^ o(新ptr是此层，指向节点的指针）
 
 	inline void TTNode::setOver() {
 		lock();
+		if (fptr != nullptr) {
+			belong->runableNodeSize--;
+		}
 		fptr = nullptr;
 		unlock();
 	}
@@ -500,7 +523,7 @@ o ^ o(新ptr是此层，指向节点的指针）
 		changeList.lock();
 		json jrt;
 		jrt["type"] = "TThreadPool";
-		jrt["size"] = this->size;
+		jrt["runableNodeSize"] = this->runableNodeSize;
 		jrt["threads"] = json::array();
 		for (auto i : threads) {
 			jrt["threads"].push_back(json(decPtr(i)));
