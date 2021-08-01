@@ -3,6 +3,7 @@
 #include <list>
 #include <thread>
 #include <mutex>
+#include <chrono>
 
 #ifdef THREADTREE_DEBUG
 #include <json.hpp> 
@@ -185,6 +186,8 @@ namespace MAT {
 		void setOver();//彻底结束，此节点无效化
 		Guard getGuard();
 
+		TThreadPool* const wrap;//包含此节点的线程池
+		TTNode* const belong;//包含此节点的线程节点
 	private:
 #ifdef THREADTREE_DEBUG
 	public:
@@ -193,8 +196,6 @@ namespace MAT {
 		Fptr fptr;//用户函数，会被run调用
 		Fptr de_fptr;//当fptr为nullptr时，且nodeC为空时，fptr会变为de_fptr
 
-		TThreadPool* const wrap;//包含此节点的线程池
-		TTNode* const belong;//包含此节点的线程节点
 		//该线程节点是否正在被执行。初始化为false
 		bool running;
 
