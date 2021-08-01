@@ -169,11 +169,11 @@ namespace MAT {
 	public:
 #endif
 
-		TTNode(TThreadPool* belong);//线程不安全
+		TTNode(TThreadPool* wrap);//线程不安全
 
 		/*尽管TTNode会自动在nodeC中存储你创建的线程节点，但由于TTNode会自动移除运行完毕且nodeC为空的节点，
 		你需要保存它的指针防止内存泄露 */
-		TTNode(TTNode* wrap);//线程不安全
+		TTNode(TTNode* belong);//线程不安全
 
 		~TTNode() {};
 
@@ -193,21 +193,22 @@ namespace MAT {
 		Fptr fptr;//用户函数，会被run调用
 		Fptr de_fptr;//当fptr为nullptr时，且nodeC为空时，fptr会变为de_fptr
 
-		TThreadPool* const belong;//包含此节点的线程池
-		
+		TThreadPool* const wrap;//包含此节点的线程池
+		TTNode* const belong;//包含此节点的线程节点
 		//该线程节点是否正在被执行。初始化为false
 		bool running;
 
 		NodeC nodeC;
-
+		NodeC::iterator it;
 
 		/*
 		* 线程不安全
-		* 在适当的时候将 de_fptr 赋给 fptr
-		确保 fptr != nullptr 或 !nodeC.empty()
-		在节点无效时移除自己（return true)（不会析构）
+		* 在树结构被改变时运行 如erase setOver setDFptr 
+		* 任务：
+		* 1.若nodeC为空，将本节点的de_fptr赋值到fptr
+		* 2.若nodeC为空且本节点的de_fptr为nullptr，移除本节点
 		*/
-		bool maintain(NodeC::iterator it, NodeC* ptr);//维护状态
+		void maintain();//维护状态
 		bool runable();
 
 		bool fptrNULL();
@@ -250,10 +251,12 @@ namespace MAT {
 	}
 
 	void NodeC::erase(iterator it) {
-		TThreadPool* belong = (*it)->belong;
 		TTNode* ptr = *it;
+		TThreadPool* wrap = ptr->wrap;
+		TTNode* belong = ptr->belong;
+
 		if (!ptr->fptrNULL()) {
-			belong->runableNodeSize--;
+			wrap->runableNodeSize--;
 		}
 		
 		if (activeIt == it) {
@@ -274,6 +277,9 @@ namespace MAT {
 		}
 		else {
 			list.erase(it);
+		}
+		if (belong != nullptr) {
+			belong->maintain();
 		}
 	}
 
@@ -300,19 +306,14 @@ namespace MAT {
 
 		TTNode* ptr = *rt.it;//要执行的节点的指针
 		while (true) {//循环
-			std::cout << std::endl << getJson() << std::endl;
-			if (ptr->maintain(rt.it, rt.ptr)) {//维护
-				rt.ptr = nullptr;//若节点被移除
-				return rt;//报错
-			}
-			else {//若节点存在
-				if (ptr->running | ptr->fptrNULL()) {
-					if (ptr->nodeC.empty()) {
-						rt.ptr = nullptr;//若节点正在被执行
-						return rt;//报错
-					}
-					else {
-						/*
+
+			if (ptr->running | ptr->fptrNULL()) {
+				if (ptr->nodeC.empty()) {
+					rt.ptr = nullptr;//若节点正在被执行
+					return rt;//报错
+				}
+				else {
+					/*
 |
 _____________(rt.ptr指向容器,it是容器的迭代器)
 o ^ o ^ o ^ o(ptr是此层，指向节点的指针）
@@ -321,16 +322,16 @@ _____(新的rt.ptr指向ptr的容器,it是新容器的迭代器)
 o ^ o(新ptr是此层，指向节点的指针）
 
 */
-						rt.ptr = &ptr->nodeC;
-						rt.ptr->next();
-						rt.it = rt.ptr->activeIt;
-						ptr = *rt.it;
-					}
-				}
-				else {
-					return rt;
+					rt.ptr = &ptr->nodeC;
+					rt.ptr->next();
+					rt.it = rt.ptr->activeIt;
+					ptr = *rt.it;
 				}
 			}
+			else {
+				return rt;
+			}
+			
 		}
 	}
 
@@ -354,13 +355,15 @@ o ^ o(新ptr是此层，指向节点的指针）
 					nodeNow = *ndp.it;//赋值
 					nodeCNow = &nodeNow->nodeC;
 					nodeNow->running = true;
+					std::cout << std::endl << getJson() << std::endl;
 					changeList.unlock();
 
 					(nodeNow->*(nodeNow->fptr))();
 
 					changeList.lock();
 					nodeNow->running = false;//修改数值
-					nodeNow->maintain(ndp.it, ndp.ptr);
+					std::cout << std::endl << getJson() << std::endl;
+					//nodeNow->maintain(ndp.it, ndp.ptr);
 					changeList.unlock();
 				}
 				else {
@@ -425,37 +428,40 @@ o ^ o(新ptr是此层，指向节点的指针）
 
 //---------------------------------------------------------------------
 //TTNode-func
-	TTNode::TTNode(TThreadPool* belong) :
-		belong(belong), fptr(nullptr), de_fptr(nullptr), running(false) {
-		belong->nodeC.push_back(this);
-		belong->tryCreateThread();
+	TTNode::TTNode(TThreadPool* wrap) :
+		wrap(wrap), belong(nullptr), fptr(nullptr), de_fptr(nullptr), running(false) {
+		wrap->nodeC.push_back(this);
+		it = --wrap->nodeC.list.end();
+		wrap->tryCreateThread();
 	};
 
-	TTNode::TTNode(TTNode* wrap) :
-		belong(wrap->belong), fptr(nullptr), de_fptr(nullptr), running(false) {
-		wrap->nodeC.push_back(this);
-		belong->tryCreateThread();
+	TTNode::TTNode(TTNode* belong) :
+		wrap(belong->wrap), belong(belong), fptr(nullptr), de_fptr(nullptr), running(false) {
+		belong->nodeC.push_back(this);
+		it = --belong->nodeC.list.end();
+		wrap->tryCreateThread();
 	};
 
 	inline bool TTNode::fptrNULL() {
 		return fptr == nullptr;
 	}
 
-	bool TTNode::maintain(NodeC::iterator it, NodeC* ptr) {
+	void TTNode::maintain() {
 		if (nodeC.empty()) {
-			if (de_fptr != nullptr) {
-				if (fptr == nullptr) {
-					belong->runableNodeSize++;
+			if (de_fptr == nullptr) {
+				if (belong == nullptr) {
+					wrap->nodeC.erase(it);
 				}
+				else {
+					belong->nodeC.erase(it);
+				}
+			}
+			else {
 				fptr = de_fptr;
 				de_fptr = nullptr;
-			}
-			if (fptr == nullptr) {
-				ptr->erase(it);
-				return true;
+				wrap->runableNodeSize++;
 			}
 		}
-		return false;
 	}
 
 	template <class T> inline void TTNode::setFptr(T ptr) {
@@ -466,7 +472,7 @@ o ^ o(新ptr是此层，指向节点的指针）
 #endif
 		lock();
 		if (fptr == nullptr) {
-			belong->runableNodeSize++;
+			wrap->runableNodeSize++;
 		}
 		fptr = static_cast<Fptr>(ptr);
 		unlock();
@@ -480,32 +486,34 @@ o ^ o(新ptr是此层，指向节点的指针）
 #endif
 		lock();
 		if (fptr != nullptr) {
-			belong->runableNodeSize--;
+			wrap->runableNodeSize--;
 		}
 		de_fptr = static_cast<Fptr>(ptr);
 		fptr = nullptr;
+		maintain();
 		unlock();
 	}
 
 	inline void TTNode::setOver() {
 		lock();
 		if (fptr != nullptr) {
-			belong->runableNodeSize--;
+			wrap->runableNodeSize--;
 		}
 		fptr = nullptr;
+		maintain();
 		unlock();
 	}
 
 	inline void TTNode::lock() {
-		belong->changeList.lock();
+		wrap->changeList.lock();
 	}
 
 	inline void TTNode::unlock() {
-		belong->changeList.unlock();
+		wrap->changeList.unlock();
 	}
 
 	inline TTNode::Guard TTNode::getGuard() {
-		return Guard(&belong->changeList);
+		return Guard(&wrap->changeList);
 	}
 
 //---------------------------------------------------------------------
@@ -520,7 +528,6 @@ o ^ o(新ptr是此层，指向节点的指针）
 
 
 	json TThreadPool::getJson() {//输出调试信息
-		changeList.lock();
 		json jrt;
 		jrt["type"] = "TThreadPool";
 		jrt["runableNodeSize"] = this->runableNodeSize;
@@ -529,7 +536,6 @@ o ^ o(新ptr是此层，指向节点的指针）
 			jrt["threads"].push_back(json(decPtr(i)));
 		}
 		jrt["nodeC"] = nodeC.getJson();
-		changeList.unlock();
 		return jrt;
 	}
 

@@ -86,7 +86,7 @@ void test5() {//
 	MAT::TThreadPool ttp;
 	A a0(&ttp, 1);
 	A a1(&ttp, 1);
-	ttp.setMaxThreadsSize(2);
+	ttp.setMaxThreadsSize(1);
 	ttp.join();
 }
 
