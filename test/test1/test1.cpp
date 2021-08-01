@@ -10,7 +10,6 @@ public:
 	int a;
 	A** ptr;
 	void init() {
-		setFptr(&A::foo);
 		if (a > 0) {
 			ptr = new A * [a];
 		}
@@ -21,10 +20,10 @@ public:
 			ptr[i] = new A(this, a - 1);
 		}
 	}
-	A(MAT::TThreadPool* belong, int a) : MAT::TTNode(belong), a(a){
+	A(MAT::TThreadPool* belong, int a) : MAT::TTNode(belong, &A::foo), a(a){
 		init();
 	}
-	A(MAT::TTNode* wrap, int a) : MAT::TTNode(wrap), a(a) {
+	A(MAT::TTNode* wrap, int a) : MAT::TTNode(wrap, &A::foo), a(a) {
 		init();
 	}
 	void foo() {
@@ -86,7 +85,7 @@ void test5() {//
 	MAT::TThreadPool ttp;
 	A a0(&ttp, 1);
 	A a1(&ttp, 1);
-	ttp.setMaxThreadsSize(1);
+	ttp.setMaxThreadsSize(2);
 	ttp.join();
 }
 

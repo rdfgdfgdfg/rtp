@@ -168,12 +168,13 @@ namespace MAT {
 #ifdef THREADTREE_DEBUG
 	public:
 #endif
-
-		TTNode(TThreadPool* wrap);//线程不安全
+		template<class T>
+		TTNode(TThreadPool* wrap, T fptr);//线程不安全
 
 		/*尽管TTNode会自动在nodeC中存储你创建的线程节点，但由于TTNode会自动移除运行完毕且nodeC为空的节点，
 		你需要保存它的指针防止内存泄露 */
-		TTNode(TTNode* belong);//线程不安全
+		template<class T>
+		TTNode(TTNode* belong, T fptr);//线程不安全
 
 		~TTNode() {};
 
@@ -355,14 +356,14 @@ o ^ o(新ptr是此层，指向节点的指针）
 					nodeNow = *ndp.it;//赋值
 					nodeCNow = &nodeNow->nodeC;
 					nodeNow->running = true;
-					std::cout << std::endl << getJson() << std::endl;
+					//std::cout << std::endl << getJson() << std::endl;
 					changeList.unlock();
 
 					(nodeNow->*(nodeNow->fptr))();
 
 					changeList.lock();
 					nodeNow->running = false;//修改数值
-					std::cout << std::endl << getJson() << std::endl;
+					//std::cout << std::endl << getJson() << std::endl;
 					//nodeNow->maintain(ndp.it, ndp.ptr);
 					changeList.unlock();
 				}
@@ -428,17 +429,21 @@ o ^ o(新ptr是此层，指向节点的指针）
 
 //---------------------------------------------------------------------
 //TTNode-func
-	TTNode::TTNode(TThreadPool* wrap) :
-		wrap(wrap), belong(nullptr), fptr(nullptr), de_fptr(nullptr), running(false) {
+	template<class T>
+	TTNode::TTNode(TThreadPool* wrap, T fptr) :
+		wrap(wrap), belong(nullptr), fptr(static_cast<Fptr>(fptr)), de_fptr(nullptr), running(false) {
 		wrap->nodeC.push_back(this);
 		it = --wrap->nodeC.list.end();
+		wrap->runableNodeSize++;
 		wrap->tryCreateThread();
 	};
 
-	TTNode::TTNode(TTNode* belong) :
-		wrap(belong->wrap), belong(belong), fptr(nullptr), de_fptr(nullptr), running(false) {
+	template<class T>
+	TTNode::TTNode(TTNode* belong, T fptr) :
+		wrap(belong->wrap), belong(belong), fptr(static_cast<Fptr>(fptr)), de_fptr(nullptr), running(false) {
 		belong->nodeC.push_back(this);
 		it = --belong->nodeC.list.end();
+		wrap->runableNodeSize++;
 		wrap->tryCreateThread();
 	};
 
