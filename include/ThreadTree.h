@@ -134,7 +134,6 @@ namespace MAT {
 
 		~TThreadPool();
 		void join();
-		void start();//开始线程池。
 		void setMaxThreadsSize(size_c size);
 #ifdef THREADTREE_DEBUG
 		json getJson();
@@ -400,12 +399,6 @@ o ^ o(新ptr是此层，指向节点的指针）
 			return true;
 		}
 		return false;
-	}
-
-	void TThreadPool::start() {
-		changeList.lock();
-		tryCreateThread();
-		changeList.unlock();
 	}
 
 	void TThreadPool::join() {
