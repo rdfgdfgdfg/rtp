@@ -88,11 +88,7 @@ namespace MAT {
 
 
 		bool empty();//线程不安全
-		iterator begin();
-		iterator end();
 
-
-		using iterator = std::list<TTNode*>::iterator;
 
 		struct pos {//储存getNodeLower的返回值
 			NodeC* ptr;//it是ptr的迭代器。若getNodeLower执行失败，ptr是nullptr

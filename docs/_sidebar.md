@@ -7,7 +7,15 @@
 		- [简介](technicalDetails/nodeC/README)
 		- 变量
 			- [list](technicalDetails/nodeC/variables/list)
-			- 
+			- [activeIt](technicalDetails/nodeC/variables/activeIt)
 		- 函数
+			- [empty](technicalDetails/nodeC/functions/empty)
+			- [erase](technicalDetails/nodeC/functions/erase)
+			- [getNodeLower](technicalDetails/nodeC/functions/getNodeLower)
+			- [next](technicalDetails/nodeC/functions/next)
+			- [push_back](technicalDetails/nodeC/functions/push_back)
 	- TThreadPool
+		- [简介](technicalDetails/TThreadPool/README)
+		- 变量
+		- 函数
 	- TTNode
