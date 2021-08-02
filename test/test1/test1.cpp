@@ -42,6 +42,34 @@ public:
 	}
 };
 
+class B :public MAT::TTNode {
+public:
+	int a;
+	B** ptr;
+	B(MAT::TThreadPool* belong, int a) : MAT::TTNode(belong, &B::foo), ptr(nullptr), a(a) {}
+	B(MAT::TTNode* wrap, int a) : MAT::TTNode(wrap, &B::foo), ptr(nullptr), a(a) {}
+	void foo() {
+		cout << "foo" << endl;
+		if (a > 0) {
+			ptr = new B * [a];
+		}
+		for (int i = 0; i < a; i++) {
+			ptr[i] = new B(this, a - 1);
+		}
+		setDFptr(&B::de_foo);
+	}
+	//->foo
+	void de_foo() {
+
+		for (int i = 0; i < a; i++) {
+			delete ptr[i];
+		}
+		delete[] ptr;
+		cout << "delete foo" << endl;
+		setOver();
+	}
+};
+
 void test0() {
 	MAT::TThreadPool ttp;
 	A a0(&ttp, 0);
@@ -96,7 +124,7 @@ void test6() {//
 	ttp.join();
 }
 
-void test7() {//getNodeLower平均
+void test7() {
 	MAT::TThreadPool ttp;
 	A a0(&ttp, 256);
 	A a1(&ttp, 256);
@@ -104,10 +132,16 @@ void test7() {//getNodeLower平均
 	ttp.join();
 }
 
+void test8() {
+	MAT::TThreadPool ttp;
+	B a0(&ttp, 3);
+	B a1(&ttp, 3);
+	ttp.setMaxThreadsSize(2);
+	ttp.join();
+}
+
 int main()
 {
-	cout << "烧机即将开始" << endl;
-	system("pause");
-	test7();
+	test8();
 	return 0;
 }

@@ -33,7 +33,6 @@ namespace MAT {
 		friend class TThreadPool;
 		friend class TTNode;
 	public:
-		struct pos;//用于存放getNodeLower返回值的表示位置的结构体
 		using iterator = std::list<TTNode*>::iterator;
 	private:
 #ifdef THREADTREE_DEBUG
@@ -43,40 +42,16 @@ namespace MAT {
 
 		std::list<TTNode*>::iterator activeIt;
 
-
-		/*
-		* 线程不安全
-		* 执行此函数需要确保list不为空
-		* 修改activeIt，读取list
-		* 该函数会移动activeIt，起到遍历list的作用
-		* 建议先next，再访问activeIt
-		*/
 		void next();//activeIt移位
 
 		void erase(iterator it);
 
 		void push_back(TTNode* ptr);//线程不安全
 
-				/*
-		* 线程不安全
-		* 执行此函数需要确保list不为空
-		* 访问activeIt，执行erase，empty
-		* 该函数会依次移位并访问activeIt：访问this->activeIt，然后是(*this->activeIt)->nodeC.activeIt
-		然后是(*(*this->activeIt)->nodeC.activeIt)->nodeC.activeIt以此类推（每次访问前都会next)
-		* 该函数会在得到可执行且!running的线程节点时终止，否则，它会一直运行到nodeC.empty()为止
-		* 它会维护所有迭代到的节点的状态
-		* 反复执行该函数可以达到遍历的效果
-		*/
-		pos getNodeLower();//指向属于此节点容器的最近可执行节点（线程不安全）
+		TTNode* getNodeLower();//指向属于此节点容器的最近可执行节点（线程不安全）
 
 		bool empty();//线程不安全
 	public:
-
-
-		struct pos {//储存getNodeLower的返回值
-			NodeC* ptr;//it是ptr的迭代器。若getNodeLower执行失败，ptr是nullptr
-			NodeC::iterator it; //*it指向属于此节点容器的最近可执行节点.
-		};
 
 		NodeC() :activeIt(list.end()) {};
 #ifdef THREADTREE_DEBUG
@@ -265,32 +240,29 @@ namespace MAT {
 
 
 
-	NodeC::pos NodeC::getNodeLower() {
+	TTNode* NodeC::getNodeLower() {
 		/*
 		|
-		_____________(rt.ptr指向容器,it是容器的迭代器)
+		_____________(ptrC指向容器,activeIt是容器的迭代器)
 		o ^ o ^ o ^ o(ptr是此层，指向节点的指针）
 		|       |
 		_____
 		o ^ o
 		
 		*/
-		pos rt;//返回值
 		if (empty()) {
-			rt.ptr = nullptr;
-			return rt;
+			return nullptr;
 		}
-		rt.ptr = this;
+		NodeC* ptrC = this;
 		next();
-		rt.it = activeIt;
+		NodeC::iterator itC = activeIt;
 
-		TTNode* ptr = *rt.it;//要执行的节点的指针
+		TTNode* ptr = *itC;//要执行的节点的指针
 		while (true) {//循环
 
 			if (ptr->running | ptr->fptrNULL()) {
 				if (ptr->nodeC.empty()) {
-					rt.ptr = nullptr;//若节点正在被执行
-					return rt;//报错
+					return nullptr;
 				}
 				else {
 					/*
@@ -302,14 +274,14 @@ _____(新的rt.ptr指向ptr的容器,it是新容器的迭代器)
 o ^ o(新ptr是此层，指向节点的指针）
 
 */
-					rt.ptr = &ptr->nodeC;
-					rt.ptr->next();
-					rt.it = rt.ptr->activeIt;
-					ptr = *rt.it;
+					ptrC = &ptr->nodeC;
+					ptrC->next();
+					itC = ptrC->activeIt;
+					ptr = *itC;
 				}
 			}
 			else {
-				return rt;
+				return ptr;
 			}
 			
 		}
@@ -319,7 +291,6 @@ o ^ o(新ptr是此层，指向节点的指针）
 //---------------------------------------------------------------------
 //TThreadPool-func
 	void TThreadPool::run(std::list<std::thread*>::iterator it) {
-		NodeC::pos ndp;
 		while (true) {//主循环
 			this;
 			NodeC* nodeCNow = &nodeC;//将要执行的节点的节点容器的指针
@@ -330,13 +301,12 @@ o ^ o(新ptr是此层，指向节点的指针）
 					changeList.unlock();
 					return;
 				}
-				auto start = std::chrono::high_resolution_clock::now();
-				ndp = nodeCNow->getNodeLower();//获取下一个节点的位置
-				auto end = std::chrono::high_resolution_clock::now();
-				std::cout << "cost" << (end - start).count() << std::endl;
-				if (ndp.ptr != nullptr) {//检验合法性
-					nodeNow = *ndp.it;//赋值
-					nodeCNow = &nodeNow->nodeC;
+				//auto start = std::chrono::high_resolution_clock::now();
+				nodeNow = nodeCNow->getNodeLower();//获取下一个节点的位置
+				//auto end = std::chrono::high_resolution_clock::now();
+				//std::cout << "cost" << (end - start).count() << std::endl;
+				if (nodeNow != nullptr) {//检验合法性
+					nodeCNow = &nodeNow->nodeC;//赋值
 					nodeNow->running = true;
 					//std::cout << std::endl << getJson() << std::endl;
 					changeList.unlock();

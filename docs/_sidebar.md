@@ -41,8 +41,11 @@
 			- [runninh.md](technicalDetails/TTNode/variables/runninh.md)
 			- [wrap.md](technicalDetails/TTNode/variables/wrap.md)
 		- 函数
+			- [fptrNULL.md](technicalDetails/TTNode/functions/fptrNULL.md)
 			- [getGuard.md](technicalDetails/TTNode/functions/getGuard.md)
 			- [lock.md](technicalDetails/TTNode/functions/lock.md)
+			- [maintain.md](technicalDetails/TTNode/functions/maintain.md)
+			- [runable.md](technicalDetails/TTNode/functions/runable.md)
 			- [setDFptr.md](technicalDetails/TTNode/functions/setDFptr.md)
 			- [setFptr.md](technicalDetails/TTNode/functions/setFptr.md)
 			- [setOver.md](technicalDetails/TTNode/functions/setOver.md)

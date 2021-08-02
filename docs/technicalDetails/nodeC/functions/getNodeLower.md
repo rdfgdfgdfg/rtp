@@ -1,9 +1,10 @@
-# `pos getNodeLower();`
+# `TTNode* getNodeLower();`
 
 |特征|内容
 |---|---
 |线程安全性|False
 |用途|反复执行该函数可以达到遍历的效果
+|返回值|若返回值不为`nullptr`，表示`run`下一个要执行的线程节点
 |条件|list不为空
 |引用|调用`empty`，调用`next`，调用`fptrNULL`；访问`activeIt`
 |可访问性|`private`
