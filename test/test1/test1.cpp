@@ -28,7 +28,6 @@ public:
 	}
 	void foo() {
 		cout << "foo" << endl;
-		Sleep(1000);
 		setDFptr(&A::de_foo);
 	}
 	//->foo
@@ -39,7 +38,6 @@ public:
 		}
 		delete[] ptr;
 		cout << "delete foo" << endl;
-		Sleep(1000);
 		setOver();
 	}
 };
@@ -81,10 +79,11 @@ void test4() {//
 	ttp.join();
 }
 
-void test5() {//
+//1'000'000'000ns = 1s , 1'000'000ns = 1ms
+void test5() {//getNodeLower平均978ns，最长112'900ns
 	MAT::TThreadPool ttp;
-	A a0(&ttp, 1);
-	A a1(&ttp, 1);
+	A a0(&ttp, 5);
+	A a1(&ttp, 5);
 	ttp.setMaxThreadsSize(2);
 	ttp.join();
 }
@@ -97,8 +96,18 @@ void test6() {//
 	ttp.join();
 }
 
+void test7() {//getNodeLower平均
+	MAT::TThreadPool ttp;
+	A a0(&ttp, 256);
+	A a1(&ttp, 256);
+	ttp.setMaxThreadsSize(-1);
+	ttp.join();
+}
+
 int main()
 {
-	test5();
+	cout << "烧机即将开始" << endl;
+	system("pause");
+	test7();
 	return 0;
 }

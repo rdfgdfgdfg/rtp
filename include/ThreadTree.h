@@ -39,22 +39,9 @@ namespace MAT {
 #ifdef THREADTREE_DEBUG
 	public:
 #endif
-		/*
-		* push_back可添加；getNodeLower可访问，可调用erase删除；empty next可访问
-		* 存放由用户函数创建的线程节点。内部的节点指针将会被getNodeLower访问并迭代
-		* 刚初始化时，链表为空。
-		* 链表是否为空是getNodeLower判断是否移除（不析构）该节点指针的依据之一
-		*/
-		std::list<TTNode*> list;//若fptr创建了其他线程节点。它们将被加入到此迭代器中
+		std::list<TTNode*> list;
 
-
-		/*
-		* 节点容器的迭代器
-		* getNodeLower可访问；next erase可访问并修改
-		* 存放将要被getNodeLower迭代的线程节点
-		* 刚初始化时，迭代器为空
-		*/
-		std::list<TTNode*>::iterator activeIt;//节点容器的迭代器，指向下一个应被执行的线程节点。
+		std::list<TTNode*>::iterator activeIt;
 
 
 		/*
@@ -66,15 +53,11 @@ namespace MAT {
 		*/
 		void next();//activeIt移位
 
-		/*安全地删除list中的元素，不会使activeIt失效*/
-		void erase(iterator it);//线程不安全
+		void erase(iterator it);
 
 		void push_back(TTNode* ptr);//线程不安全
 
-	public:
-
-
-		/*
+				/*
 		* 线程不安全
 		* 执行此函数需要确保list不为空
 		* 访问activeIt，执行erase，empty
@@ -86,8 +69,8 @@ namespace MAT {
 		*/
 		pos getNodeLower();//指向属于此节点容器的最近可执行节点（线程不安全）
 
-
 		bool empty();//线程不安全
+	public:
 
 
 		struct pos {//储存getNodeLower的返回值
@@ -347,7 +330,10 @@ o ^ o(新ptr是此层，指向节点的指针）
 					changeList.unlock();
 					return;
 				}
+				auto start = std::chrono::high_resolution_clock::now();
 				ndp = nodeCNow->getNodeLower();//获取下一个节点的位置
+				auto end = std::chrono::high_resolution_clock::now();
+				std::cout << "cost" << (end - start).count() << std::endl;
 				if (ndp.ptr != nullptr) {//检验合法性
 					nodeNow = *ndp.it;//赋值
 					nodeCNow = &nodeNow->nodeC;

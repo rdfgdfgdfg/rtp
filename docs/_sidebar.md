@@ -2,6 +2,7 @@
 - 使用
 	- [线程池](use/pool)
 	- [线程节点](use/node)
+- [算法](algorithm)
 - 技术细节
 	- nodeC
 		- [简介](technicalDetails/nodeC/README)
