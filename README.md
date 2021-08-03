@@ -1,6 +1,10 @@
 # rtp
 Recursive thread pool. Use tree-structure to assign resource.
 
+## note
+* If the document conflicts with the comment, the document takes precedence
+* This library has been written complete. email me if you have any questions
+
 ## where to use
 1.Very large and complex problems that need recursive algorithm.  
 2.Have to use multithreading.  
