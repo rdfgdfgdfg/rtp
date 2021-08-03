@@ -60,6 +60,9 @@ namespace MAT {
 
 	};
 
+
+
+
 	class TThreadPool {
 		friend class TTNode;
 		friend class NodeC;
@@ -94,6 +97,9 @@ namespace MAT {
 		json getJson();
 #endif
 	};
+
+
+
 
 	class TTNode {
 	public:
@@ -148,7 +154,7 @@ namespace MAT {
 #endif
 		//初始化为nullptr，表示不要试图执行该线程节点。
 		Fptr fptr;//用户函数，会被run调用
-		Fptr de_fptr;//当fptr为nullptr时，且nodeC为空时，fptr会变为de_fptr
+		Fptr de_fptr;
 
 		//该线程节点是否正在被执行。初始化为false
 		bool running;
@@ -164,7 +170,6 @@ namespace MAT {
 		* 2.若nodeC为空且本节点的de_fptr为nullptr，移除本节点
 		*/
 		void maintain();//维护状态
-		bool runable();
 
 		bool fptrNULL();
 	public:
@@ -371,7 +376,7 @@ o ^ o(新ptr是此层，指向节点的指针）
 
 	inline TThreadPool::TThreadPool(): maxThreadsSize(0), runableNodeSize(0), forDelete(nullptr) {}
 
-	inline TThreadPool::~TThreadPool(){}
+	inline TThreadPool::~TThreadPool() { delete forDelete; }
 
 //---------------------------------------------------------------------
 //TTNode-func
@@ -400,11 +405,13 @@ o ^ o(新ptr是此层，指向节点的指针）
 	void TTNode::maintain() {
 		if (nodeC.empty()) {
 			if (de_fptr == nullptr) {
-				if (belong == nullptr) {
-					wrap->nodeC.erase(it);
-				}
-				else {
-					belong->nodeC.erase(it);
+				if (fptr == nullptr) {
+					if (belong == nullptr) {
+						wrap->nodeC.erase(it);
+					}
+					else {
+						belong->nodeC.erase(it);
+					}
 				}
 			}
 			else {
