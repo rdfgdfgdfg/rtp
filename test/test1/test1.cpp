@@ -4,7 +4,7 @@
 #include "test1.h"
 
 using namespace std;
-nlohmann::json jlog = nlohmann::json::array();
+
 class A :public MAT::TTNode {
 public:
 	int a;
@@ -73,21 +73,21 @@ public:
 void test0() {
 	MAT::TThreadPool ttp;
 	A a0(&ttp, 0);
-	ttp.setMaxThreadsSize(1);
+	ttp.start(1);
 	ttp.join();
 }
 
 void test1() {
 	MAT::TThreadPool ttp;
 	A a0(&ttp, 2);
-	ttp.setMaxThreadsSize(1);
+	ttp.start(1);
 	ttp.join();
 }
 
 void test2() {//
 	MAT::TThreadPool ttp;
 	A a0(&ttp, 1);
-	ttp.setMaxThreadsSize(1);
+	ttp.start(1);
 	ttp.join();
 }
 
@@ -95,7 +95,7 @@ void test3() {
 	MAT::TThreadPool ttp;
 	A a0(&ttp, 0);
 	A a1(&ttp, 0);
-	ttp.setMaxThreadsSize(1);
+	ttp.start(1);
 	ttp.join();
 }
 
@@ -103,7 +103,7 @@ void test4() {//
 	MAT::TThreadPool ttp;
 	A a0(&ttp, 0);
 	A a1(&ttp, 1);
-	ttp.setMaxThreadsSize(1);
+	ttp.start(1);
 	ttp.join();
 }
 
@@ -112,7 +112,7 @@ void test5() {//getNodeLower平均978ns，最长112'900ns
 	MAT::TThreadPool ttp;
 	A a0(&ttp, 5);
 	A a1(&ttp, 5);
-	ttp.setMaxThreadsSize(2);
+	ttp.start(2);
 	ttp.join();
 }
 
@@ -120,7 +120,7 @@ void test6() {//
 	MAT::TThreadPool ttp;
 	A a0(&ttp, 1);
 	A a1(&ttp, 1);
-	ttp.setMaxThreadsSize(6);
+	ttp.start(6);
 	ttp.join();
 }
 
@@ -128,7 +128,7 @@ void test7() {
 	MAT::TThreadPool ttp;
 	A a0(&ttp, 256);
 	A a1(&ttp, 256);
-	ttp.setMaxThreadsSize(-1);
+	ttp.start(-1);
 	ttp.join();
 }
 
@@ -136,12 +136,27 @@ void test8() {
 	MAT::TThreadPool ttp;
 	B a0(&ttp, 3);
 	B a1(&ttp, 3);
-	ttp.setMaxThreadsSize(2);
+	ttp.start(2);
 	ttp.join();
 }
 
+
 int main()
 {
+	test0();
+	
+	test1();
+
+	test2();
+
+	test3();
+
+	test4();
+
+	test5();
+
+	test6();
+
 	test8();
 	return 0;
 }

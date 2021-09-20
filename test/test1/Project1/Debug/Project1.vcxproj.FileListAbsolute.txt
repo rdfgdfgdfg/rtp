@@ -1,0 +1,2 @@
+F:\rtp\test\test1\Project1\Debug\Project1.exe
+F:\rtp\test\test1\Project1\Debug\Project1.pdb

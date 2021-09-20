@@ -10,20 +10,19 @@ public:
 
 
 
-	A(MAT::TThreadPool* belong, int a) : MAT::TTNode(belong) {
-		fptr = static_cast<Fptr>(&A::foo);
+	A(MAT::TThreadPool* belong, int a) : MAT::TTNode(belong, &A::foo) {
 		for (int i = 0; i < a; i++) {
 			new A(this, a - 1);
 		}
 	}
-	A(MAT::TTNode* wrap, int a) : MAT::TTNode(wrap) {
-		fptr = static_cast<Fptr>(&A::foo);
+	A(MAT::TTNode* wrap, int a) : MAT::TTNode(wrap, &A::foo) {
 		for (int i = 0; i < a; i++) {
 			new A(this, a - 1);
 		}
 	}
 	void foo() {
 		cout << "hello" << endl;
+		setOver();
 	}
 };
 
@@ -34,16 +33,9 @@ int main()
 	A a1(&ttp, 3);
 	A a2(&ttp, 3);
 	A a3(&ttp, 3);
-	nlohmann::json jlog = nlohmann::json::array();
-	auto a = ttp.nodeC.getNodeLower();
-	jlog.push_back(ttp.getJson());
+	ttp.start(1);
+	ttp.join();
 
-	a = ttp.nodeC.getNodeLower();
-	jlog.push_back(ttp.getJson());
-
-	a = (*a.it)->nodeC.getNodeLower();
-	jlog.push_back(ttp.getJson());
-	cout << jlog.dump();
 }
 
 // 运行程序: Ctrl + F5 或调试 >“开始执行(不调试)”菜单

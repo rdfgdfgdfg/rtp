@@ -4,12 +4,9 @@
 cmake_minimum_required (VERSION 3.8)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
-SET(CMAKE_BUILD_TYPE "Release")
-set(BUILD_USE_64BITS on)
+include_directories(../../include)
 project ("test0")
 
 # 将源代码添加到此项目的可执行文件。
 add_executable (test0 "test0.cpp" "test0.h")
-
-include_directories ($ENV{CPP_EXTRA_INCLUDE})
 # TODO: 如有需要，请添加测试并安装目标。

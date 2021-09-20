@@ -1,9 +1,11 @@
 ﻿#pragma once
 
 #include <list>
-#include <thread>
+#include <vector>
 #include <mutex>
+#include <thread>
 #include <chrono>
+#include <condition_variable>
 
 #ifdef THREADTREE_DEBUG
 #include <json.hpp> 
@@ -72,27 +74,29 @@ namespace MAT {
 #endif
 
 		NodeC nodeC;
-		size_c maxThreadsSize;//最大线程数量
 		size_c runableNodeSize;//节点数量
-		std::list<std::thread*> threads;
-		std::thread* forDelete;
+		std::vector<std::thread*> threads;
+		size_c runningThread;
 
 		void tryCreateThread();//尝试创建线程（线程不安全）
 		bool tryDeleteThread(std::list<std::thread*>::iterator it);//尝试删除线程（线程不安全）
 
-		void run(std::list<std::thread*>::iterator it);
+		void run();
+		bool checkRunable();
 	protected:
 		std::mutex changeList;
+		std::mutex noticeLock;
+		std::condition_variable cv;
 	public:
 
-		TThreadPool();
+		TThreadPool():runningThread(0), runableNodeSize(0){};
 
 		TThreadPool(const TThreadPool&) = delete;
 		TThreadPool(const TThreadPool&&) = delete;
 
 		~TThreadPool();
 		void join();
-		void setMaxThreadsSize(size_c size);
+		void start(size_c size);
 #ifdef THREADTREE_DEBUG
 		json getJson();
 #endif
@@ -295,17 +299,14 @@ o ^ o(新ptr是此层，指向节点的指针）
 
 //---------------------------------------------------------------------
 //TThreadPool-func
-	void TThreadPool::run(std::list<std::thread*>::iterator it) {
+	void TThreadPool::run() {
 		while (true) {//主循环
 			this;
 			NodeC* nodeCNow = &nodeC;//将要执行的节点的节点容器的指针
 			TTNode* nodeNow = nullptr;//将要执行的节点的指针
 			while (true) {//单链循环
 				changeList.lock();
-				if (tryDeleteThread(it)) {
-					changeList.unlock();
-					return;
-				}
+				if (checkRunable()) { changeList.unlock(); return; }
 				//auto start = std::chrono::high_resolution_clock::now();
 				nodeNow = nodeCNow->getNodeLower();//获取下一个节点的位置
 				//auto end = std::chrono::high_resolution_clock::now();
@@ -332,51 +333,64 @@ o ^ o(新ptr是此层，指向节点的指针）
 		}
 	}
 
-	inline void TThreadPool::tryCreateThread() {
-		while ((runableNodeSize > threads.size()) & (threads.size() < maxThreadsSize)) {
-			threads.push_back(nullptr);
-			threads.back() = new std::thread(&TThreadPool::run, this, --threads.end());
-		}
-	}
-
-	void TThreadPool::setMaxThreadsSize(size_c size) {
-		changeList.lock();
-		maxThreadsSize = size;
-		tryCreateThread();
-		changeList.unlock();
-	}
-
-	bool TThreadPool::tryDeleteThread(std::list<std::thread*>::iterator it) {
-		if (runableNodeSize < threads.size()) {
-			if (forDelete != nullptr) {
-				while (forDelete->joinable());
-			}
-			delete forDelete;
-			forDelete = *it;
-			threads.erase(it);
-			return true;
-		}
-		return false;
-	}
 
 	void TThreadPool::join() {
 		while (true) {
 			changeList.lock();
-			if (threads.empty()) {
+			if (runningThread == 0) {
 				changeList.unlock();
 				return;
 			}
 			changeList.unlock();
-			try {
-				threads.front()->join();
+			for (auto i : threads) {
+				if (i->joinable()) {
+					i->join();
+				}
 			}
-			catch (...) {}
 		}
 	}
 
-	inline TThreadPool::TThreadPool(): maxThreadsSize(0), runableNodeSize(0), forDelete(nullptr) {}
+	void TThreadPool::start(size_c size) {
+		threads.reserve(size);
+		changeList.lock();
+		for (size_c i = 0; i < size; i++) {
+			threads.push_back(new std::thread(&TThreadPool::run, this));
+		}
+		runningThread = size;
+		changeList.unlock();
+	}
 
-	inline TThreadPool::~TThreadPool() { delete forDelete; }
+	bool TThreadPool::checkRunable() {
+		while (true) {
+			if (runableNodeSize == 0) {
+				runningThread = 0;
+				cv.notify_one();
+				return true;
+			}
+			if (runableNodeSize < runningThread) {
+				runningThread--;
+				std::unique_lock<std::mutex> lk(noticeLock);
+				changeList.unlock();
+				cv.wait(lk);
+				changeList.lock();
+				runningThread++;
+			}
+			else {
+				if ((runableNodeSize > runningThread) & (runningThread < threads.size())) {
+					cv.notify_one();
+				}
+				return false;
+			}
+		}
+
+	}
+
+	TThreadPool::~TThreadPool() {
+		join();
+		for (auto i : threads) {
+			delete i;
+		}
+	}
 
 //---------------------------------------------------------------------
 //TTNode-func
@@ -386,7 +400,6 @@ o ^ o(新ptr是此层，指向节点的指针）
 		wrap->nodeC.push_back(this);
 		it = --wrap->nodeC.list.end();
 		wrap->runableNodeSize++;
-		wrap->tryCreateThread();
 	};
 
 	template<class T>
@@ -395,7 +408,6 @@ o ^ o(新ptr是此层，指向节点的指针）
 		belong->nodeC.push_back(this);
 		it = --belong->nodeC.list.end();
 		wrap->runableNodeSize++;
-		wrap->tryCreateThread();
 	};
 
 	inline bool TTNode::fptrNULL() {
