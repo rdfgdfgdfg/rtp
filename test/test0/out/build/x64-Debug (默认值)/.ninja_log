@@ -1,7 +1,0 @@
-# ninja log v5
-1	494	653579398	CMakeFiles/test0.dir/test0.cpp.obj	63329c0c74438cd5
-495	903	653579398	test0.exe	10a086203b3f2540
-0	687	653579425	CMakeFiles/test0.dir/test0.cpp.obj	63329c0c74438cd5
-688	993	653579425	test0.exe	10a086203b3f2540
-0	611	653834367	CMakeFiles/test0.dir/test0.cpp.obj	355ae98e3d05b615
-612	1081	653834367	test0.exe	d5d3d93add99a08e
